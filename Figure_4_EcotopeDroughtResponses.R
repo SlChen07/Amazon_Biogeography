@@ -12,9 +12,8 @@
 gc()
 rm(list=ls(all=TRUE))
 
-
 #Packages required:  
-library(mgcv); library(qgam); library(mgcViz);library(gam);library(plm);library(LaplacesDemon);
+library(mgcv); library(qgam); library(mgcViz);library(gam);library(plm);library(LaplacesDemon);library(gtable);library(grid);
 library(dplyr);library(gratia);library(rlang);require(fields);library(MASS);library(smatr);library(ggplot2);library(ggpmisc);
 library(Rmisc) ;library(lattice);library(plyr);library(data.table);library(ggsignif);library(dplyr);library(scales);
 library(grid);library(ggthemes);library(RColorBrewer);library(plotly);library(MuMIn);library(Hotelling);
@@ -46,7 +45,7 @@ file_name=paste('BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRe
 file_ful_path=paste(file_path,Drought_year,"/",file_name,sep='')
 Drought_04De.data_2015<- read.csv(file=file_ful_path,header=T) 
 
-#----merge datasets-------------------
+#---------merge datasets-------------------
 Drought_04De.data_2005$year=""
 Drought_04De.data_2005$year="2005"
 Drought_04De.data_2010$year=""
@@ -67,10 +66,7 @@ rm(Drought_04De.data_2)
 ###--------------------------------main code for figure 4-------------------------------------------
 ##------------------Panel A Observations------ EVI Anomaly as function of WTD----------------------
 options(digits=7) 
-
 Drought_04De_new2.data.data<-Drought_04De.data[which(is.finite(Drought_04De.data$EVI_anomaly) & is.finite(Drought_04De.data$Tree_Height) &  is.finite(Drought_04De.data$PAR_anomaly) & is.finite(Drought_04De.data$VPD_anomaly) & is.finite(Drought_04De.data$SoilFertility)  & Drought_04De.data$SegGeo_number>=04 & Drought_04De.data$SegGeo_number <=36 & Drought_04De.data$WTD <=60  &  is.finite(Drought_04De.data$MCWD_STD) & Drought_04De.data$year=="2015" & Drought_04De.data$SoilSand_content<1 ),]  # 
-
-
 
 Drought_04De_new.data<-data.frame(Drought_04De_new2.data.data$PAR_anomaly,
                                       Drought_04De_new2.data.data$VPD_anomaly,
@@ -97,13 +93,10 @@ names(Drought_04De_new.data)<-c('PAR_anomaly','VPD_anomaly','Pre_anomaly','MCWD_
                                     'RootDepth','Drought_Length','Iso_Trait','MCWD_STD','DrySeasonLength',
                                     'EVI_anomaly','Long','Lat','SegGeo_number','HAND_CLASS')
 
-
 summary(Drought_04De_new.data)
 #cor(Drought_04De_new.data)
 
-
 Drought_04De_new.data$WoodDensity<-Drought_04De_new.data$WoodDensity*100.0
-
 Drought_04De_new.data2<-Drought_04De_new.data  #before scaling
 Drought_04De_new.data_beforscaling<-Drought_04De_new.data 
 
@@ -112,27 +105,86 @@ Drought_04De_new.data_beforscaling<-Drought_04De_new.data
 #--Scale the data---------------------------
 Scaled.Drought_04De_new.data<-apply(Drought_04De_new.data[,1:14],2, scale)
 Drought_04De_new.data <- as.data.frame( cbind(Scaled.Drought_04De_new.data,Drought_04De_new.data[,15:19]))
-
-
 threshold_scale=10
 Drought_04De_new.data <- Drought_04De_new.data[which(abs(Drought_04De_new.data$EVI_anomaly) <= 10 &    abs(Drought_04De_new.data$PAR_anomaly)<= threshold_scale &  abs(Drought_04De_new.data$VPD_anomaly)<= threshold_scale & abs(Drought_04De_new.data$Pre_anomaly)<= threshold_scale &
                                                                abs(Drought_04De_new.data$MCWD_anomaly)<= threshold_scale &  abs(Drought_04De_new.data$SoilFertility)<= threshold_scale & abs(Drought_04De_new.data$Drought_Length)<= threshold_scale &  abs(Drought_04De_new.data$DrySeasonLength)<= threshold_scale & abs(Drought_04De_new.data$WTD)<= threshold_scale & abs(Drought_04De_new.data$TreeHeight)<= threshold_scale) ,]
 
 #--Run and fit the model---------------------------
-
 mod.IA_Guiana=ancova_establish_slope_Guiana_04Degree_SoilSand(Drought_04De_new.data)
-
 BIC(mod.IA_Guiana)
 summary(mod.IA_Guiana)
 gam.check(mod.IA_Guiana) 
 #concurvity(mod.IA_Guiana, full = TRUE)
-
-
 FulxTower_adjust_new.data$Residual_R=resid(mod.IA_Guiana)#
 FulxTower_adjust_new.data$Prediction=fitted(mod.IA_Guiana)
 
-#-------Figure 4 Panel E observation Original EVI and Prediction EVI with GAM MODEL Drawing with Observations_ Residuals
-year=2015
+#-------------------------------------Figure 4 Panel A  soil Fertility 2D--------------------------------------------
+sm <- smooth_estimates(mod.IA_Guiana, dist = 0.1)
+sm_copy<-sm
+
+Drought_04De_new.data_BStmp<-Drought_04De_new.data_beforscaling
+sm_copy2<-Model_2D_Partial_Prediction(Drought_04De_new.data_BStmp,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility', x3.smooth='smooth',y.smooth='est', x0.smooth='s(WTD)',x1.smooth='s(SoilFertility)',x2.smooth='ti(WTD,SoilFertility)', moment = median)
+
+threshold_value=0.4
+sm_copy2[which(sm_copy2$est >=threshold_value),]$est=threshold_value
+sm_copy2[which(sm_copy2$est <=(-1)*threshold_value),]$est=(-1)*threshold_value
+sm_copy[which(sm_copy$est >=threshold_value),]$est=threshold_value
+sm_copy[which(sm_copy$est <=(-1)*threshold_value),]$est=(-1)*threshold_value
+c_break<-c((-1)*threshold_value,-0.2,0,0.2,threshold_value)
+Figure4_PanelA<-ggplot(sm_copy2, aes(x = WTD, y = SoilFertility)) +
+  geom_raster(aes(fill = est)) +
+  geom_contour(aes(z = est), colour = "black",linetype="dashed") + #, colour = "gray"
+  scale_fill_gradientn(limits = c((-1)*threshold_value,threshold_value),
+                       colors = brewer.pal(10,"RdYlGn")[3:9],
+                       breaks=(c_break), labels=format(c_break))+
+  xlab("HAND (meter)") +
+  ylab("Soil fertility (cmol(+)/kg)") +
+  scale_x_continuous(limits =c(0,40)) +
+  scale_y_continuous(limits =c(-1.1,0.3),breaks=seq(-1.0,0.2,  by=0.1)) + theme_few() %+replace%
+  theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                        size =1.0))+
+  theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
+  theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
+  theme(axis.title=element_text(size=18))+ #,face="bold"
+  theme(plot.title=element_text(size=18,face="bold"))
+Figure4_PanelA
+
+#-------------------------------------Figure 4 Panel B  soil Fertility 2D-----------------------------------------
+sm <- smooth_estimates(mod.IA_Guiana, dist = 0.1)
+sm_copy<-sm
+Drought_04De_new.data_BStmp<-Drought_04De_new.data_beforscaling
+
+sm_copy2<-Model_2D_Partial_Prediction(Drought_04De_new.data_BStmp,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'TreeHeight', x3.smooth='smooth',y.smooth='est', x0.smooth='s(WTD)',x1.smooth='s(TreeHeight)',x2.smooth='ti(WTD,TreeHeight)', moment = median)
+
+threshold_value=0.4
+sm_copy2[which(sm_copy2$est >=threshold_value),]$est=threshold_value
+sm_copy2[which(sm_copy2$est <=(-1)*threshold_value),]$est=(-1)*threshold_value
+sm_copy[which(sm_copy$est >=threshold_value),]$est=threshold_value
+sm_copy[which(sm_copy$est <=(-1)*threshold_value),]$est=(-1)*threshold_value
+c_break<-c((-1)*threshold_value,-0.2,0,0.2,threshold_value)
+
+paletteer_c("grDevices::RdYlGn", 30) #"grDevices::RdYlGn"
+Figure4_PanelB<-ggplot(sm_copy2, aes(x = WTD, y = TreeHeight)) +
+  geom_raster(aes(fill = est)) +
+  
+  geom_contour(aes(z = est), colour = "black",linetype="dashed") +
+  scale_fill_gradientn(limits = c((-1)*threshold_value,threshold_value),
+                       colors = brewer.pal(10,"RdYlGn")[3:9],
+                       breaks=(c_break), labels=format(c_break))+ 
+  xlab("HAND (meter)") +
+  ylab("Tree hight (m)") +
+  scale_x_continuous(limits =c(-0,40))+
+  scale_y_continuous(limits =c(20,40),breaks=seq(21,39,  by=1.5)) + theme_few() %+replace%
+  theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                        size =1.0))+
+  theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
+  theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
+  theme(axis.title=element_text(size=18))+ #,face="bold"
+  theme(plot.title=element_text(size=18,face="bold"))
+
+Figure4_PanelB
+
+#-------------------------------------Figure 4 Panel C  soil Fertility--------------------------------------------
 Drought_04De_new.data_BStmp<-Drought_04De_new.data_beforscaling
 
 Ecotope_Factors <- select(Drought_04De_new.data_BStmp, SoilFertility, DrySeasonLength,WTD,TreeHeight,SoilSand_content)
@@ -142,215 +194,63 @@ names(Ecotope_Factors)<-c('SoilFertility_ori','DrySeasonLength_ori','WTD_ori','T
 Drought_04De_new.data_BS<-as.data.frame(cbind(Drought_04De_new.data_BStmp,Ecotope_Factors))
 
 #---have the same process-----
-Scaled.Drought_04De_new.data_BS<-apply(Drought_04De_new.data_BS[,1:14],2, scale)
-Drought_04De_new.data_BS <- as.data.frame( cbind(Scaled.Drought_04De_new.data_BS,Drought_04De_new.data_BS[,15:24]))
+Scaled.FulxTower_new.data_draw<-apply(Drought_04De_new.data_BS[,1:14],2, scale)
+Drought_04De_new.data_BS <- as.data.frame( cbind(Scaled.FulxTower_new.data_draw,Drought_04De_new.data_BS[,15:24]))
 
 threshold_scale=10
 Drought_04De_new.data_BS <- Drought_04De_new.data_BS[which(abs(Drought_04De_new.data_BS$EVI_anomaly) <= 10 &    abs(Drought_04De_new.data_BS$PAR_anomaly)<= threshold_scale &  abs(Drought_04De_new.data_BS$VPD_anomaly)<= threshold_scale & abs(Drought_04De_new.data_BS$Pre_anomaly)<= threshold_scale &
                                                                          abs(Drought_04De_new.data_BS$MCWD_anomaly)<= threshold_scale &  abs(Drought_04De_new.data_BS$SoilFertility)<= threshold_scale & abs(Drought_04De_new.data_BS$Drought_Length)<= threshold_scale &  abs(Drought_04De_new.data_BS$DrySeasonLength)<= threshold_scale & abs(Drought_04De_new.data_BS$WTD)<= threshold_scale & abs(Drought_04De_new.data_BS$TreeHeight)<= threshold_scale) ,]
-#---------------------------------------------
 
-Drought_04De_new.data_ha<-Drought_04De_new.data_BS
-#Drought_04De_new.data_ha<-Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$WTD_ori <=40 ),]
-Drought_04De_new.data_ha$HAND_CLASS=floor(Drought_04De_new.data_ha$WTD_ori)+1
-Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 1),]$HAND_CLASS=Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 1),]$HAND_CLASS-1
-Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 0),]$HAND_CLASS=(Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 0),]$HAND_CLASS%/%2+1)*2
-Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS== -1),]$HAND_CLASS=Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS == -1),]$HAND_CLASS-0
-Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 0),]$HAND_CLASS=Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 0),]$HAND_CLASS-1
+#-----------------set parameters for soil fertility---------------------------------------------- 
+WTD_arr<-matrix(c((-20:60)/10)) 
+number_group=81 
 
-
-
-#-------------------Calculate mean of region/basin---------------
-Drought_04De_new.data_ha_mean<-Drought_04De_new.data_ha
-
-#----------------------Guyana shield------------------
-Model_fit_array<-Model_Seg_Prediction(Drought_04De_new.data_ha_mean,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=9, moment = mean)
-Drought_04De_new.data_ha_mean$EVI_anomaly_fit_09=Model_fit_array$.value
-
-#----------------------Southern Amazon----------------------------
-Model_fit_array<-Model_Seg_Prediction(Drought_04De_new.data_ha_mean,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=12, moment = mean)
-Drought_04De_new.data_ha_mean$EVI_anomaly_fit_12=Model_fit_array$.value
-
-#----------------EverWet Amazon---------------------
-Model_fit_array<-Model_Seg_Prediction(Drought_04De_new.data_ha_mean,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=21, moment = mean)
-Drought_04De_new.data_ha_mean$EVI_anomaly_fit_21=Model_fit_array$.value
-
-#------------------Calculate observations of region/basin---------------------
-Drought_04De_new.data_ha<-add_fitted(Drought_04De_new.data_ha,mod.IA_Guiana)
-colnames(Drought_04De_new.data_ha)[25] = 'EVI_anomaly_fit'
-
-#-------------------Guyana shield---------------------------------------
-
-Model_correct_array<-Model_Seg_Correction(Drought_04De_new.data_ha, Drought_04De_new.data_ha_mean, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_09', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=9)
-Brando_summary_Geo=summary_group_simple(Model_correct_array,1) #calculate for original EVI
-Brando_summary_Geo$EVI_anomaly<-Brando_summary_Geo$EVI_anomaly_corrected#`s(WTD)`
-Brando_summary_Geo$type=rep("Ori_Guyana", times=length(Brando_summary_Geo$EVI_anomaly))
-Brando_summary_Geo<-Brando_summary_Geo[which(Brando_summary_Geo$N >=4   ),]
-Brando_summary_Geo[which(Brando_summary_Geo$HAND_CLASS ==3   ),]$ci<-Brando_summary_Geo[which(Brando_summary_Geo$HAND_CLASS ==3 ),]$ci-0.4
-Brando_summary_Geo
-arr_ori_1=data.frame(Brando_summary_Geo$HAND_CLASS,Brando_summary_Geo$EVI_anomaly,Brando_summary_Geo$ci,Brando_summary_Geo$type) #, Brando_summary_Geo$SegGeo_number
-arr_ori_1
-
-#-----------------Southern Amazon---------------------------
-Model_correct_array<-Model_Seg_Correction(Drought_04De_new.data_ha, Drought_04De_new.data_ha_mean, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_12', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=12)
-Brando_summary_Geo=summary_group_simple(Model_correct_array,1) #calculate for original EVI
-Brando_summary_Geo$EVI_anomaly<-Brando_summary_Geo$EVI_anomaly_corrected#`s(WTD)`
-Brando_summary_Geo$type=rep("Ori_southern", times=length(Brando_summary_Geo$EVI_anomaly))
-Brando_summary_Geo<-Brando_summary_Geo[which(Brando_summary_Geo$N >=4   & Brando_summary_Geo$ci <=1.5 ),]
-#Brando_summary_Geo[which(Brando_summary_Geo$HAND_CLASS ==30  ),]$ci<-Brando_summary_Geo[which(Brando_summary_Geo$HAND_CLASS ==30 ),]$ci
-Brando_summary_Geo
-arr_ori_2=data.frame(Brando_summary_Geo$HAND_CLASS,Brando_summary_Geo$EVI_anomaly,Brando_summary_Geo$ci,Brando_summary_Geo$type) #, Brando_summary_Geo$SegGeo_number
-
-
-#-----EverWet Amazon------------------------------
-Model_correct_array<-Model_Seg_Correction(Drought_04De_new.data_ha, Drought_04De_new.data_ha_mean, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_21', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=21)
-
-#Drought_04De_new.data_ha_ha_mean$EVI_anomaly_fit_21#
-Model_correct_array[which(Model_correct_array$HAND_CLASS >=19   ),]$HAND_CLASS=19
-Brando_summary_Geo=summary_group_simple(Model_correct_array,1) #calculate for original EVI
-Brando_summary_Geo$EVI_anomaly<-Brando_summary_Geo$EVI_anomaly_corrected#`s(WTD)`
-Brando_summary_Geo$type=rep("Ori_EverWet", times=length(Brando_summary_Geo$EVI_anomaly))
-Brando_summary_Geo<-Brando_summary_Geo[which(Brando_summary_Geo$N >=4   ),]
-Brando_summary_Geo[which(Brando_summary_Geo$HAND_CLASS ==17  ),]$ci<-Brando_summary_Geo[which(Brando_summary_Geo$HAND_CLASS ==17 ),]$ci-0.2
-Brando_summary_Geo
-arr_ori_3=data.frame(Brando_summary_Geo$HAND_CLASS,Brando_summary_Geo$EVI_anomaly,Brando_summary_Geo$ci,Brando_summary_Geo$type) #, Brando_summary_Geo$SegGeo_number
-arr_ori<-rbind( arr_ori_3)# 
-
-
-rangeMin=-1.5
-range_mm=2.
-rangeMax=rangeMin+range_mm
-
-BY_increase=0.5
-color_threshold=1
-arr_ori<-rbind( arr_ori_1, arr_ori_2)
-cbPalette <- c( "#D53E4F", "#238B45")# "#3288BD", "#D53E4F", "#238B45"  blue  red green
-Figure4_PanelE_obSG<-ggplot(arr_ori, aes(x=Brando_summary_Geo.HAND_CLASS, y=Brando_summary_Geo.EVI_anomaly, group=factor(Brando_summary_Geo.type)))+ 
-  geom_hline(yintercept = 0,width=.6 ) + #linetype="dashed"
-  geom_errorbar(aes(ymin=Brando_summary_Geo.EVI_anomaly-Brando_summary_Geo.ci, ymax=Brando_summary_Geo.EVI_anomaly+Brando_summary_Geo.ci,colour = factor(Brando_summary_Geo.type),group=factor(Brando_summary_Geo.type)), size=0.5, width=.3) +  #,face="bold"
-  geom_point( size=3.5, shape=23,aes(group=factor(Brando_summary_Geo.type),colour=factor(Brando_summary_Geo.type),fill=factor(Brando_summary_Geo.type))) + #,fill=factor(Brando_summary_Geo.type)
-  #geom_smooth(span = 0.6,color=cbPalette[color_threshold],fill = cbPalette[color_threshold])+
-  # stat_smooth(method="loess",span = 0.6,aes(group=factor(Brando_summary_Geo.type),colour=factor(Brando_summary_Geo.type),fill=factor(Brando_summary_Geo.type)))+
-  # geom_smooth(span = 0.6, aes(group=factor(Brando_summary_Geo.type),colour=factor(Brando_summary_Geo.type),fill=factor(Brando_summary_Geo.type)), stat = "identity", linetype = "dashed") +
-  scale_fill_manual(values=cbPalette) +
-  scale_colour_manual(values=cbPalette)  +
+SF_set_reverse=((-10:4)*0.1-mean(Drought_04De_new.data_beforscaling$SoilFertility))/sd(Drought_04De_new.data_beforscaling$SoilFertility)
+sf_inital=-1.0
+byincrease=0.1
+#--------calculate prediction for soil Fertility-------------
+for(i in seq(from=1, 13, by=1))
+{
+  Model_fit_array<-Model_Seg_Prediction_Region_SoilFertility(Drought_04De_new.data_BS,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',SF.value=SF_set_reverse[i], moment = mean)
   
-  xlab("HAND (meter)") +
-  ylab("      Drought Response  ") +
-  scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) +
-  scale_x_continuous(limits =c(0,40), breaks=seq(0,40,  by=10))+
-  theme_bw() +
-  theme( legend.position=c(1,0))+
-  theme(legend.justification=c(1,0))+
-  theme_classic() + # ???????????????????????????
+  newd0<-Model_fit_array
   
-  theme(panel.background = element_rect(fill = NA,colour = "black", 
-                                        size =1.0))+
-  theme(axis.text.x = element_text( color="Black", size=24))+  #,face="bold")
-  theme(axis.text.y = element_text( color="Black", size=24))+  #,face="bold"
-  theme(axis.title=element_text(size=24))+ #,face="bold"
-  theme(plot.title=element_text(size=24))
-
-
-
-Figure4_PanelE_obSG
-
-arr_ori<-rbind( arr_ori_3)
-cbPalette <- c( "#3288BD")# "#3288BD", "#D53E4F", "#238B45"  blue  red green
-Figure4_PanelE_obE<-ggplot(arr_ori, aes(x=Brando_summary_Geo.HAND_CLASS, y=Brando_summary_Geo.EVI_anomaly, group=factor(Brando_summary_Geo.type)))+ 
-  geom_hline(yintercept = 0,width=.6 ) + #linetype="dashed"
-  geom_errorbar(aes(ymin=Brando_summary_Geo.EVI_anomaly-Brando_summary_Geo.ci, ymax=Brando_summary_Geo.EVI_anomaly+Brando_summary_Geo.ci,colour = factor(Brando_summary_Geo.type),group=factor(Brando_summary_Geo.type)), size=0.5, width=.3) +  #,face="bold"
-  geom_point( size=3.5, shape=23,aes(group=factor(Brando_summary_Geo.type),colour=factor(Brando_summary_Geo.type))) + #,fill=factor(Brando_summary_Geo.type)
+  if ((i-1)<10) {st_tag=paste(as.character(0),as.character(i-1))}else {
+    st_tag=c(as.character(i-1))
+  }
+  st_tag<-gsub(" ", "", st_tag)
+  print(st_tag)
+  type_str<-paste('SF',st_tag,as.character(sf_inital+byincrease*(i-1.0)),sep = "_")
+  newd0$type=type_str
+  print(type_str)
   
-  
-  scale_fill_manual(values=cbPalette) +
-  scale_colour_manual(values=cbPalette)  +
-  
-  xlab("HAND (meter)") +
-  ylab("      Drought Response  ") +
-  scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) +
-  scale_x_continuous(limits =c(0,40), breaks=seq(0,40,  by=10))+
-  theme_bw() +
-  theme( legend.position=c(1,0))+
-  theme(legend.justification=c(1,0))+
-  theme_classic() + # ???????????????????????????
-  
-  theme(panel.background = element_rect(fill = NA,colour = "black", 
-                                        size =1.0))+
-  theme(axis.text.x = element_text( color="Black", size=24))+  #,face="bold")
-  theme(axis.text.y = element_text( color="Black", size=24))+  #,face="bold"
-  theme(axis.title=element_text(size=24))+ #,face="bold"
-  theme(plot.title=element_text(size=24))
+  if (i == 1 ) {
+    newd=rbind(newd0)
+  }
+  newd<-rbind(newd,newd0)
+}
 
-Figure4_PanelE_obE
-Figure4_PanelE_ob<-merge_figures_sameunits(Figure4_PanelE_obSG,Figure4_PanelE_obE)
-grid.draw(Figure4_PanelE_ob)
+tgca_combine<-newd
+tgca_combine<-tgca_combine[which(tgca_combine$WTD_reverse >=0 &  tgca_combine$WTD_reverse<=40 )  ,]
 
-##-------------------------------- Figure 4 Panel E prediction------------------------------------------------------------
-seg=12
-year=2015
-min_thre=-1.7
-max_thre=1.5
-number_group=31
-WTD_arr<-matrix(c((-30:50)/10)) #
-number_group=81
-#------set up datasets--------------------------------------------
-Drought_04De_new_beforescale_tmp.data<-Drought_04De_new.data_beforscaling
-Ecotope_Factors <- select(Drought_04De_new_beforescale_tmp.data, SoilFertility, DrySeasonLength,WTD,TreeHeight,SoilSand_content)
-
-names(Ecotope_Factors)<-c('SoilFertility_ori','DrySeasonLength_ori','WTD_ori','TreeHeight_ori','SoilSand_content_ori')
-
-Drought_04De_new_beforescale.data<-as.data.frame(cbind(Drought_04De_new_beforescale_tmp.data,Ecotope_Factors))
-
-#---have the same process-----
-Scaled.FulxTower_new_BF.data<-apply(Drought_04De_new_beforescale.data[,1:14],2, scale)
-Drought_04De_new_beforescale.data <- as.data.frame( cbind(Scaled.FulxTower_new_BF.data,Drought_04De_new_beforescale.data[,15:24]))
-
-threshold_scale=10
-Drought_04De_new_beforescale.data <- Drought_04De_new_beforescale.data[which(abs(Drought_04De_new_beforescale.data$EVI_anomaly) <= 10 &    abs(Drought_04De_new_beforescale.data$PAR_anomaly)<= threshold_scale &  abs(Drought_04De_new_beforescale.data$VPD_anomaly)<= threshold_scale & abs(Drought_04De_new_beforescale.data$Pre_anomaly)<= threshold_scale &
-                                                                         abs(Drought_04De_new_beforescale.data$MCWD_anomaly)<= threshold_scale &  abs(Drought_04De_new_beforescale.data$SoilFertility)<= threshold_scale & abs(Drought_04De_new_beforescale.data$Drought_Length)<= threshold_scale &  abs(Drought_04De_new_beforescale.data$DrySeasonLength)<= threshold_scale & abs(Drought_04De_new_beforescale.data$WTD)<= threshold_scale & abs(Drought_04De_new_beforescale.data$TreeHeight)<= threshold_scale) ,]
-
-#--------calculate prediction for each region-------------
-Model_fit_array<-Model_Seg_Prediction_Region(Drought_04De_new_beforescale.data,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=21, moment = mean)
-newd12<-Model_fit_array
-newd12$type="DSL_9EverWet"
-#newd12$WTD_reverse=(newd12$WTD*WTD_sd2)+mean(FulxTower_adjust_new.data2$WTD)
-
-#---southern Amazon-----
-Model_fit_array<-Model_Seg_Prediction_Region(Drought_04De_new_beforescale.data,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=12, moment = mean)
-newd13<-Model_fit_array
-newd13$type="DSL_9Southern"
-#newd13$WTD_reverse=(newd13$WTD*WTD_sd2)+mean(FulxTower_adjust_new.data2$WTD)
-
-#---Guyana Shield-----
-Model_fit_array<-Model_Seg_Prediction_Region(Drought_04De_new_beforescale.data,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=09, moment = mean)
-newd14<-Model_fit_array
-newd14$type="DSL_9Guyana"
-#newd14$WTD_reverse=(newd14$WTD*WTD_sd2)+mean(FulxTower_adjust_new.data2$WTD)
-
-#----Draw figures---------------------------------------------
 rangeMin=-1.5
 range_mm=2.0
 rangeMax=rangeMin+range_mm
 BY_increase=0.5
 
-newd12<-newd12[which(newd12$WTD_reverse >=0 &  newd12$WTD_reverse<=21)  ,]
+cbPalette<-c("#26456EFF", "#1F5691FF", "#1C6AA9FF", "#2D7DB4FF", "#4A93C1FF", "#7BB2D2FF", "#CACACAFF", "#A9C399FF", "#7CB070FF", "#4E9B51FF", "#29863DFF", "#1B7333FF", "#09622AFF") 
 
-tgca_combine<-rbind(newd12,newd13,newd14) #
-#tgca_combine<-rbind(newd2) 
-tgca_combine<-tgca_combine[which(tgca_combine$WTD_reverse >=0 &  tgca_combine$WTD_reverse<=40)  ,]
-cbPalette <- c( "#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#FEE08B", "#FFFFBF", "#E6F598", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2","#F46D43","#66C2A5") #"#9E0142",   "#F46D43","#66C2A5
-cbPalette <- c( "#9E0142","#3288BD","#66C2A5") #"#9E0142",
-cbPalette <- c("#66C2A5", "#3288BD","#9E0142")
-cbPalette <- c(   "#3288BD", "#D53E4F", "#238B45") 
-Figure4_PanelE_ob<-ggplot(tgca_combine, aes(x = WTD_reverse, y =fit, colour = factor(type),group=factor(type))) + 
+Figure4_PanelC1<-ggplot(tgca_combine, aes(x = WTD_reverse, y =fit, colour = factor(type),group=factor(type))) + 
   theme_bw() +
   scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) + 
-  #  geom_line(linetype = "dashed") +
+  geom_line(size=1) +
   geom_hline(yintercept = 0,  width=.6) +
-  geom_smooth( data=subset(tgca_combine,type=="DSL_9Southern" |type=="DSL_9EverWet"|type=="DSL_9Guyana"),aes(ymin = lci, ymax = uci,group=factor(type),colour=factor(type),fill=factor(type)), stat = "identity", linetype = "dashed") +
+  
+  # geom_smooth(aes(ymin = lci, ymax = uci,group=factor(type),colour=factor(type),fill=factor(type)), stat = "identity") +
   scale_fill_manual(values=cbPalette) +
-  scale_colour_manual(values=cbPalette)  +
+  scale_colour_manual(values=cbPalette)  +  
+  xlab("HAND (meter)") +
+  ylab("EVI anomaly") +
   scale_x_continuous(breaks=seq(0,40,10))+ theme_few() %+replace%
   theme(panel.background = element_rect(fill = NA,colour = "black", 
                                         size =1.0))+
@@ -359,13 +259,609 @@ Figure4_PanelE_ob<-ggplot(tgca_combine, aes(x = WTD_reverse, y =fit, colour = fa
   theme(axis.title=element_text(size=18))+ #,face="bold"
   theme(plot.title=element_text(size=18,face="bold"))
 geom_point()
+Figure4_PanelC1
+
+#-------------------set parameters for soil fertility shade-------------------------------------- 
+WTD_arr<-matrix(c((-20:60)/10)) 
+number_group=81 
+SF_set_reverse=(c(-0.9,-0.7,-1.05,0.125,0.3,-0.1)-mean(Drought_04De_new.data_beforscaling$SoilFertility))/sd(Drought_04De_new.data_beforscaling$SoilFertility)
+SF_set<-c(-0.9,-0.7,-1.05,0.125,0.3,-0.1)
+sf_inital=-1.0
+byincrease=0.1
+#--------calculate prediction for soil Fertility-------------
+for(i in seq(from=1, 6, by=1))
+{
+  Model_fit_array<-Model_Seg_Prediction_Region_SoilFertility(Drought_04De_new.data_BS,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',SF.value=SF_set_reverse[i], moment = mean)
+  
+  newd_tmp<-Model_fit_array
+  
+  if ((i-1)<10) {st_tag=paste(as.character(0),as.character(i-1))}else {
+    st_tag=c(as.character(i-1))
+  }
+  st_tag<-gsub(" ", "", st_tag)
+  print(st_tag)
+  type_str<-paste('SF',st_tag,as.character(SF_set[i]),sep = "_")
+  newd_tmp$type=type_str
+  print(type_str)
+  
+  if (i == 1 ) {
+    newd0<-newd_tmp
+    newd=(newd_tmp)
+  } else{ newd<-rbind(newd,newd_tmp)}
+  if (i == 4 ) {newd3<-newd_tmp}
+  
+}
+
+type_inx <- match('type', names(newd))
+fit_inx <- match('fit', names(newd))
+
+df1<-data.frame(newd[newd[,type_inx]=="SF_00_-0.9",fit_inx],newd[newd[,type_inx]=="SF_01_-0.7",fit_inx],newd[newd[,type_inx]=="SF_02_-1.05",fit_inx])
+newd0$uci<-apply(X = df1[,], MARGIN = 1, FUN = max, na.rm = TRUE)
+newd0$fit<-newd0$fit
+newd0$lci<-apply(X = df1[,], MARGIN = 1, FUN = min, na.rm = TRUE)
+
+df1<-data.frame(newd[newd[,type_inx]=="SF_03_0.125",fit_inx],newd[newd[,type_inx]=="SF_04_0.3",fit_inx],newd[newd[,type_inx]=="SF_05_-0.1",fit_inx])
+newd3$uci<-apply(X = df1[,], MARGIN = 1, FUN = max, na.rm = TRUE)
+newd3$fit<-newd3$fit
+newd3$lci<-apply(X = df1[,], MARGIN = 1, FUN = min, na.rm = TRUE)
+
+rangeMin=-1.5
+range_mm=2.0
+rangeMax=rangeMin+range_mm
+BY_increase=0.5
+
+tgca_combine<-rbind(newd0,newd3) #
+tgca_combine<-tgca_combine[which(tgca_combine$WTD_reverse >=0 &  tgca_combine$WTD_reverse<=40)  ,]
+cbPalette<- c("#1F5691FF", "#1B7333FF")
+Figure4_PanelC_shde<-ggplot(tgca_combine, aes(x = WTD_reverse, y =fit, colour = factor(type),group=factor(type))) + 
+  theme_bw() +
+  scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) + 
+  #  geom_line(linetype = "dashed") +
+  geom_hline(yintercept = 0,  width=.6) +
+  
+  #geom_smooth( aes(ymin = lci, ymax = uci,group=factor(type),colour=factor(type),fill=factor(type)), stat = "identity") +
+  geom_smooth( aes(ymin = lci, ymax = uci,group=factor(type),colour=factor(type),fill=factor(type)), stat = "identity", linetype = "blank") + #dashed
+  scale_fill_manual(values=cbPalette) +
+  scale_colour_manual(values=cbPalette)  +
+  xlab("HAND (meter)") +
+  ylab("EVI anomaly") +
+  scale_x_continuous(breaks=seq(0,40,10))+ theme_few() %+replace%
+  theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                        size =1.0))+
+  theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
+  theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
+  theme(axis.title=element_text(size=18))+ #,face="bold"
+  theme(plot.title=element_text(size=18,face="bold"))
+Figure4_PanelC_shde
+
+Figure4_PanelC<-merge_figures_sameunits(Figure4_PanelC1,Figure4_PanelC_shde)
+grid.draw(Figure4_PanelC)
+
+#-------------------------------------Figure 4 Panel C  Tree Height--------------------------------------------
+#-------------------------------------set parameters for tree height------------------------------------------- 
+WTD_arr<-matrix(c((-20:60)/10)) 
+number_group=81 
+TH_set_reverse=((14:26)*1.5-mean(Drought_04De_new.data_beforscaling$TreeHeight))/sd(Drought_04De_new.data_beforscaling$TreeHeight)
+th_inital=21
+byincrease=1.5
+#------  --calculate prediction for tree height-------------
+for(i in seq(from=1, 13, by=1))
+{
+  Model_fit_array<-Model_Seg_Prediction_Region_TreeHeight(Drought_04De_new.data_BS,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',TH.value=TH_set_reverse[i], moment = mean)
+  
+  newd0<-Model_fit_array
+  
+  if ((i-1)<10) {st_tag=paste(as.character(0),as.character(i-1))}else {
+    st_tag=c(as.character(i-1))
+  }
+  st_tag<-gsub(" ", "", st_tag)
+  print(st_tag)
+  type_str<-paste('TH',st_tag,as.character(th_inital+byincrease*(i-1.0)),sep = "_")
+  newd0$type=type_str
+  print(type_str)
+  
+  if (i == 1 ) {
+    newd=rbind(newd0)
+  }
+  
+  newd<-rbind(newd,newd0)
+  
+}
+
+
+tgca_combine<-newd
+tgca_combine<-tgca_combine[which(tgca_combine$WTD_reverse >=0 &  tgca_combine$WTD_reverse<=40 )  ,]
+
+rangeMin=-1.5
+range_mm=2.0
+rangeMax=rangeMin+range_mm
+BY_increase=0.5
+
+cbPalette<- c("#2E5A87FF", "#416E9BFF", "#5383AFFF", "#6998C1FF", "#7EAED3FF", "#B2C1D2FF", "#DFD4D1FF", "#F1AB9CFF", "#F87F69FF", "#ED6055FF", "#E03B42FF", "#C4263DFF", "#A90C38FF") 
+
+Figure4_PanelD1<-ggplot(tgca_combine, aes(x = WTD_reverse, y =fit, colour = factor(type),group=factor(type))) + 
+  theme_bw() +
+  scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) + 
+  geom_line(size=1) +
+  geom_hline(yintercept = 0,  width=.6) +
+  
+  # geom_smooth(aes(ymin = lci, ymax = uci,group=factor(type),colour=factor(type),fill=factor(type)), stat = "identity") +
+  scale_fill_manual(values=cbPalette) +
+  scale_colour_manual(values=cbPalette)  +  
+  xlab("HAND (meter)") +
+  ylab("EVI anomaly") +
+  scale_x_continuous(breaks=seq(0,40,10))+ theme_few() %+replace%
+  theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                        size =1.0))+
+  theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
+  theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
+  theme(axis.title=element_text(size=18))+ #,face="bold"
+  theme(plot.title=element_text(size=18,face="bold"))
+Figure4_PanelD1
+
+#-----------------set parameters for tree Height predictions------------------------------------------ 
+WTD_arr<-matrix(c((-20:60)/10)) 
+number_group=81 
+TH_set_reverse=(c(26.5,21,31.5,37.5,39.5,33)-mean(Drought_04De_new.data_beforscaling$TreeHeight))/sd(Drought_04De_new.data_beforscaling$TreeHeight)
+TH_set<-c(26.5,21,31.5,37.5,39.5,33)
+th_inital=21
+byincrease=1.5
+
+#--------calculate prediction for soil Fertility-------------
+
+for(i in seq(from=1, 6, by=1))
+{
+  Model_fit_array<-Model_Seg_Prediction_Region_TreeHeight(Drought_04De_new.data_BS,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',TH.value=TH_set_reverse[i], moment = mean)
+  
+  newd_tmp<-Model_fit_array
+  
+  if ((i-1)<10) {st_tag=paste(as.character(0),as.character(i-1))}else {
+    st_tag=c(as.character(i-1))
+  }
+  st_tag<-gsub(" ", "", st_tag)
+  print(st_tag)
+  type_str<-paste('TH',st_tag,as.character(TH_set[i]),sep = "_")
+  newd_tmp$type=type_str
+  print(type_str)
+  
+  if (i == 1 ) {
+    newd0<-newd_tmp
+    newd=(newd_tmp)
+  } else{ newd<-rbind(newd,newd_tmp)}
+  if (i == 4 ) {newd3<-newd_tmp}
+  
+}
+
+type_inx <- match('type', names(newd))
+fit_inx <- match('fit', names(newd))
+
+df1<-data.frame(newd[newd[,type_inx]=="TH_00_26.5",fit_inx],newd[newd[,type_inx]=="TH_01_21",fit_inx],newd[newd[,type_inx]=="TH_02_31.5",fit_inx])
+newd0$uci<-apply(X = df1[,], MARGIN = 1, FUN = max, na.rm = TRUE)
+newd0$fit<-newd0$fit
+newd0$lci<-apply(X = df1[,], MARGIN = 1, FUN = min, na.rm = TRUE)
+
+df1<-data.frame(newd[newd[,type_inx]=="TH_03_37.5",fit_inx],newd[newd[,type_inx]=="TH_04_39.5",fit_inx],newd[newd[,type_inx]=="TH_05_33",fit_inx])
+newd3$uci<-apply(X = df1[,], MARGIN = 1, FUN = max, na.rm = TRUE)
+newd3$fit<-newd3$fit
+newd3$lci<-apply(X = df1[,], MARGIN = 1, FUN = min, na.rm = TRUE)
+
+rangeMin=-1.5
+range_mm=2.0
+rangeMax=rangeMin+range_mm
+BY_increase=0.5
+tgca_combine<-rbind(newd0,newd3) 
+tgca_combine<-tgca_combine[which(tgca_combine$WTD_reverse >=0 &  tgca_combine$WTD_reverse<=40)  ,]
+
+cbPalette<- c("#7EAED3FF","#E03B42FF")
+Figure4_PanelD_shde<-ggplot(tgca_combine, aes(x = WTD_reverse, y =fit, colour = factor(type),group=factor(type))) + 
+  theme_bw() +
+  scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) + 
+  #  geom_line(linetype = "dashed") +
+  geom_hline(yintercept = 0,  width=.6) +
+  
+  #geom_smooth( aes(ymin = lci, ymax = uci,group=factor(type),colour=factor(type),fill=factor(type)), stat = "identity") +
+  geom_smooth( aes(ymin = lci, ymax = uci,group=factor(type),colour=factor(type),fill=factor(type)), stat = "identity", linetype = "blank") + #dashed
+  scale_fill_manual(values=cbPalette) +
+  scale_colour_manual(values=cbPalette)  +
+  xlab("HAND (meter)") +
+  ylab("EVI anomaly") +
+  scale_x_continuous(breaks=seq(0,40,10))+ theme_few() %+replace%
+  theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                        size =1.0))+
+  theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
+  theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
+  theme(axis.title=element_text(size=18))+ #,face="bold"
+  theme(plot.title=element_text(size=18,face="bold"))
+Figure4_PanelD_shde
+
+Figure4_PanelD<-merge_figures_sameunits(Figure4_PanelD1,Figure4_PanelD_shde)
+grid.draw(Figure4_PanelD)
+
+
+#-------------------------------------------Figure 4 Panel E -------------------------------------------------
+#---------------------------------------Figure 4 Panel E observation------------------------------------------
+year=2015
+Drought_04De_new.data_BStmp<-Drought_04De_new.data_beforscaling
+Ecotope_Factors <- select(Drought_04De_new.data_BStmp, SoilFertility, DrySeasonLength,WTD,TreeHeight,SoilSand_content)
+names(Ecotope_Factors)<-c('SoilFertility_ori','DrySeasonLength_ori','WTD_ori','TreeHeight_ori','SoilSand_content_ori')
+Drought_04De_new.data_BS<-as.data.frame(cbind(Drought_04De_new.data_BStmp,Ecotope_Factors))
+
+#---have the same process-----
+Scaled.Drought_04De_new.data_BS<-apply(Drought_04De_new.data_BS[,1:14],2, scale)
+Drought_04De_new.data_BS <- as.data.frame( cbind(Scaled.Drought_04De_new.data_BS,Drought_04De_new.data_BS[,15:24]))
+threshold_scale=10
+Drought_04De_new.data_BS <- Drought_04De_new.data_BS[which(abs(Drought_04De_new.data_BS$EVI_anomaly) <= 10 &    abs(Drought_04De_new.data_BS$PAR_anomaly)<= threshold_scale &  abs(Drought_04De_new.data_BS$VPD_anomaly)<= threshold_scale & abs(Drought_04De_new.data_BS$Pre_anomaly)<= threshold_scale &
+                                                                         abs(Drought_04De_new.data_BS$MCWD_anomaly)<= threshold_scale &  abs(Drought_04De_new.data_BS$SoilFertility)<= threshold_scale & abs(Drought_04De_new.data_BS$Drought_Length)<= threshold_scale &  abs(Drought_04De_new.data_BS$DrySeasonLength)<= threshold_scale & abs(Drought_04De_new.data_BS$WTD)<= threshold_scale & abs(Drought_04De_new.data_BS$TreeHeight)<= threshold_scale) ,]
+#---------------------------------------------
+Drought_04De_new.data_ha<-Drought_04De_new.data_BS
+#Drought_04De_new.data_ha<-Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$WTD_ori <=40 ),]
+Drought_04De_new.data_ha$HAND_CLASS=floor(Drought_04De_new.data_ha$WTD_ori)+1
+Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 1),]$HAND_CLASS=Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 1),]$HAND_CLASS-1
+Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 0),]$HAND_CLASS=(Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 0),]$HAND_CLASS%/%2+1)*2
+Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS== -1),]$HAND_CLASS=Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS == -1),]$HAND_CLASS-0
+Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 0),]$HAND_CLASS=Drought_04De_new.data_ha[which(Drought_04De_new.data_ha$HAND_CLASS >= 0),]$HAND_CLASS-1
+
+#-------------------Calculate mean of region/basin---------------
+Drought_04De_new.data_ha_mean<-Drought_04De_new.data_ha
+
+#----------------------Guyana shield------------------
+Model_fit_array<-Model_Seg_Prediction(Drought_04De_new.data_ha_mean,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=9, moment = median)
+Drought_04De_new.data_ha_mean$EVI_anomaly_fit_09=Model_fit_array$.value
+
+#----------------------Southern Amazon----------------------------
+Model_fit_array<-Model_Seg_Prediction(Drought_04De_new.data_ha_mean,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=12, moment = median)
+Drought_04De_new.data_ha_mean$EVI_anomaly_fit_12=Model_fit_array$.value
+
+#----------------EverWet Amazon---------------------
+Model_fit_array<-Model_Seg_Prediction(Drought_04De_new.data_ha_mean,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=21, moment = median)
+Drought_04De_new.data_ha_mean$EVI_anomaly_fit_21=Model_fit_array$.value
+
+#------------------Calculate observations of region/basin---------------------
+Drought_04De_new.data_ha<-add_fitted(Drought_04De_new.data_ha,mod.IA_Guiana)
+colnames(Drought_04De_new.data_ha)[25] = 'EVI_anomaly_fit'
+
+#-------------------Guyana shield---------------------------------------
+Model_correct_array<-Model_Seg_Correction(Drought_04De_new.data_ha, Drought_04De_new.data_ha_mean, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_09', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=9)
+arr_ob_Guyana<-summary_group_full(Model_correct_array,x0.var='EVI_anomaly', x1.var='EVI_anomaly_corrected', flag=1)
+arr_ob_Guyana$type="Ob_Guyana"
+#-----------------Southern Amazon---------------------------
+Model_correct_array<-Model_Seg_Correction(Drought_04De_new.data_ha, Drought_04De_new.data_ha_mean, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_12', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=12)
+arr_ob_Southern<-summary_group_full(Model_correct_array,x0.var='EVI_anomaly', x1.var='EVI_anomaly_corrected', flag=1)
+arr_ob_Southern$type="Ob_SouthernAmazon"
+#-----EverWet Amazon------------------------------
+Model_correct_array<-Model_Seg_Correction(Drought_04De_new.data_ha, Drought_04De_new.data_ha_mean, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_21', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=21)
+arr_ob_Everwet<-summary_group_full(Model_correct_array,x0.var='EVI_anomaly', x1.var='EVI_anomaly_corrected', flag=1)
+arr_ob_Everwet$type="Ob_EverwetAmazon"
+
+
+rangeMin=-1.5
+range_mm=2.
+rangeMax=rangeMin+range_mm
+BY_increase=0.5
+color_threshold=1
+
+arr_ob_Everwet<-arr_ob_Everwet[which(arr_ob_Everwet$HAND_CLASS >=0 &  arr_ob_Everwet$HAND_CLASS<=21)  ,]
+arr_ori<-rbind( arr_ob_Guyana, arr_ob_Southern)
+arr_ori2<-rbind( arr_ob_Everwet)
+arr_ori<-arr_ori[which(arr_ori$HAND_CLASS >=0 &  arr_ori$HAND_CLASS<=40)  ,]
+cbPalette <- c( "#D53E4F", "#238B45","#3288BD")# "#3288BD", "#D53E4F", "#238B45"  blue  red green
+Figure4_PanelE_ob<-ggplot(arr_ori, aes(x=HAND_CLASS, y=EVI_anomaly, group=factor(type)))+ 
+  geom_hline(yintercept = 0,width=.6 ) + #linetype="dashed"
+  geom_errorbar(data=arr_ori2,aes(ymin=EVI_anomaly-ci, ymax=EVI_anomaly+ci),colour=cbPalette[3], size=0.5, width=.3) +
+  geom_errorbar(aes(ymin=EVI_anomaly-ci, ymax=EVI_anomaly+ci,colour = factor(type),group=factor(type)), size=0.5, width=.3) +  #,face="bold"
+  geom_point( size=3.5, shape=23,aes(group=factor(type),colour=factor(type),fill=factor(type))) + #,fill=factor(Brando_summary_Geo.type)
+    scale_fill_manual(values=cbPalette) +
+  scale_colour_manual(values=cbPalette)  +
+  geom_point(data=arr_ori2, aes(x=HAND_CLASS, y=EVI_anomaly),colour=cbPalette[3], shape=23, size=3.5, na.rm=TRUE)+
+
+   xlab("HAND (meter)") +
+  ylab("EVI anomaly") +
+  scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) +
+  scale_x_continuous(limits =c(0,40), breaks=seq(0,40,  by=10))+
+  theme_bw() +
+  theme( legend.position=c(1,0))+
+  theme(legend.justification=c(1,0))+
+  theme_classic() + # ???????????????????????????
+  
+  theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                        size =1.0))+
+  theme(axis.text.x = element_text( color="Black", size=24))+  #,face="bold")
+  theme(axis.text.y = element_text( color="Black", size=24))+  #,face="bold"
+  theme(axis.title=element_text(size=24))+ #,face="bold"
+  theme(plot.title=element_text(size=24))
+Figure4_PanelE_ob
+
+
+##-------------------------------- Figure 4 Panel E prediction------------------------------------------------------------
+
+#--------calculate prediction for each region-------------
+Model_fit_array<-Model_Seg_Prediction_Region(Drought_04De_new.data_BS,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=21, moment = median)
+Pred_EverWet<-Model_fit_array
+Pred_EverWet$type="Prediction_EverWet"
+
+#---southern Amazon-----
+Model_fit_array<-Model_Seg_Prediction_Region(Drought_04De_new.data_BS,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=12, moment = median)
+Pred_Southern<-Model_fit_array
+Pred_Southern$type="Prediction_Southern"
+
+#---Guyana Shield-----
+Model_fit_array<-Model_Seg_Prediction_Region(Drought_04De_new.data_BS,mod.IA_Guiana,WTD_arr, x0.ori = 'WTD_ori',x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number',Seg=09, moment = median)
+Pred_Guyana<-Model_fit_array
+Pred_Guyana$type="Prediction_Guyana"
+
+#----Draw figures---------------------------------------------
+rangeMin=-1.5
+range_mm=2.0
+rangeMax=rangeMin+range_mm
+BY_increase=0.5
+Pred_EverWet<-Pred_EverWet[which(Pred_EverWet$WTD_reverse >=0 &  Pred_EverWet$WTD_reverse<=25)  ,]
+tgca_combine<-rbind(Pred_EverWet,Pred_Southern,Pred_Guyana) #
+tgca_combine<-tgca_combine[which(tgca_combine$WTD_reverse >=0 &  tgca_combine$WTD_reverse<=40)  ,]
+cbPalette <- c(   "#3288BD", "#D53E4F", "#238B45") 
+Figure4_PanelE_P<-ggplot(tgca_combine, aes(x = WTD_reverse, y =fit, colour = factor(type),group=factor(type))) + 
+  theme_bw() +
+  scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) + 
+  #  geom_line(linetype = "dashed") +
+  geom_hline(yintercept = 0,  width=.6) +
+  geom_smooth( data=subset(tgca_combine,type=="Prediction_Southern" |type=="Prediction_EverWet"|type=="Prediction_Guyana"),aes(ymin = lci, ymax = uci,group=factor(type),colour=factor(type),fill=factor(type)), stat = "identity", linetype = "dashed") +
+  scale_fill_manual(values=cbPalette) +
+  scale_colour_manual(values=cbPalette)  +
+  xlab("HAND (meter)") +
+  ylab("EVI anomaly") +
+  scale_x_continuous(breaks=seq(0,40,10))+ theme_few() %+replace%
+  theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                        size =1.0))+
+  theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
+  theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
+  theme(axis.title=element_text(size=18))+ #,face="bold"
+  theme(plot.title=element_text(size=18,face="bold"))
+
 Figure4_PanelE_P
 
-Figure4_PanelE-merge_figures_sameunits(Figure4_PanelE_ob,Figure4_PanelE_P)
+Figure4_PanelE<-merge_figures_sameunits(Figure4_PanelE_P,Figure4_PanelE_ob)
 grid.draw(Figure4_PanelE)
 
 
-#--------------functions-------------------------------------------------
+
+#--------------------------------------------------------functions-------------------------------------------------
+#--------------------------------------------Function for Figure 4 Panel A & C-------------------------------------
+
+Model_2D_Partial_Prediction<- function( data,model,x0.var = 'WTD', x1.var = 'TreeHeight', x3.smooth='smooth',y.smooth='est', x0.smooth='s(WTD)',x1.smooth='s(TreeHeight)',x2.smooth='ti(WTD,TreeHeight)', moment = mean) {
+  
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  
+  
+  sm_ml <- as.data.frame(smooth_estimates(model, dist = 0.1))
+  print(1)
+  sm_ml.tmp<-sm_ml
+  ix0_sm <- match(x0.var, names(sm_ml))
+  
+  ix1_sm<- match(x1.var, names(sm_ml))
+  ix0.smooth_sm<- match(x0.smooth, names(sm_ml))
+  ix1.smooth_sm<- match(x1.smooth, names(sm_ml))
+  ix2.smooth_sm<- match(x2.smooth, names(sm_ml))
+  ix3.smooth_sm<- match(x3.smooth, names(sm_ml))
+  y.smooth_sm<- match(y.smooth, names(sm_ml))
+  
+  sm_ml.tmp[,ix0_sm]<- sm_ml[,ix0_sm]*sd(data[,ix0])+mean(data[,ix0])
+  sm_ml.tmp[,ix1_sm]<- sm_ml[,ix1_sm]*sd(data[,ix1])+mean(data[,ix1])
+  print(sd(data[,ix0]))
+  print(mean(data[,ix1]))
+  sm_ml.copy<-sm_ml.tmp
+  x1_arr<-sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x1.smooth,ix1_sm]
+  #print(x1_arr)
+  for (TH_val in x1_arr){
+    sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm]<- sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm]+  sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x1.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm] 
+  }  
+  
+  x0_arr<-sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x0.smooth,ix0_sm]
+  for (WTD_val in x0_arr){
+    sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm]<- sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm]+  sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x0.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm] 
+  }
+  
+  return(sm_ml.copy)
+}
+
+
+
+
+Draw_Fig_2D <- function(data,x0.var = 'WTD', x1.var = 'TreeHeight',y.var='est',x0.range=c(0,40),x0.break=seq(0,40,  by=10),x1.range=c(20,40),x1.break=seq(21,39,  by=1.5),threshold_value=0.4,c_break=c(-0.2,-0.1,0,0.1,0.2))
+{
+  p_draw<- ggplot(data, aes_string(x =x0.var, y =x1.var)) +
+    geom_raster(aes_string(fill = (y.var))) +
+    geom_contour(aes_string(z = (y.var)), colour = "black",linetype="dashed") +
+    scale_fill_gradientn(limits = c((-1)*threshold_value,threshold_value),
+                         
+                         colors = brewer.pal(10,"RdYlGn")[3:9],
+                         breaks=(as.numeric(c_break)), labels=format(c_break))+ 
+    scale_x_continuous(limits =as.numeric(x0.range))+
+    scale_y_continuous(limits =as.numeric(x1.range),breaks=as.numeric(x1.break)) + theme_few() %+replace%
+    theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                          size =1.0))+
+    theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
+    theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
+    theme(axis.title=element_text(size=18))+ #,face="bold"
+    theme(plot.title=element_text(size=18,face="bold"))
+  
+  return(p_draw)  
+}
+
+
+Data_threshold<-function(data,y.var='est',threshold_value=0.4)
+{
+  iy <- match(y.var, names(data))
+  
+  data[data[, iy]>=threshold_value & !is.na(data[, iy]),iy]<-threshold_value
+  data[data[, iy]<=(-1)*threshold_value & !is.na(data[, iy]),iy]<-(-1)*threshold_value
+  data[data[, iy]>=threshold_value & !is.na(data[, iy]),iy]<-threshold_value
+  data[data[, iy]<=(-1)*threshold_value & !is.na(data[, iy]),iy]<-(-1)*threshold_value
+  
+  return(data)
+}
+
+
+
+#----------------------------------------------functions for figure 4 Panel C & D---------------------------------
+
+Model_Seg_Prediction_Region_SoilFertility<- function( data, model,WTD_Array, x0.ori = 'WTD_ori',  x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', SF.value=0, moment = mean) {
+  
+  ix0.ori <- match(x0.ori, names(data))
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  ix2<- match(x2.var, names(data))
+  ix3<- match(x3.var, names(data))
+  ix4<- match(x4.var, names(data))
+  
+  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
+  ix1.other<- match(x1.other, names(data))
+  ix2.other<- match(x2.other, names(data))
+  ix3.other<- match(x3.other, names(data))
+  ix4.other<- match(x4.other, names(data))
+  
+  iy <- match(y.var, names(data))
+  
+  
+  x1.level <- SF.value #moment(data[data[,ix4.other]== Seg,ix1])
+  x2.level <- moment(data[,ix2])
+  x3.level <- moment(data[,ix3])
+  x4.level <- moment(data[,ix4])
+  print(x1.level)
+  print(x2.level)
+  print(x3.level)
+  print(x4.level)
+  
+  x0.other.level <- moment(data[,ix0.other]) 
+  x1.other.level <- moment(data[,ix1.other]) 
+  x2.other.level <- moment(data[,ix2.other]) 
+  x3.other.level <- moment(data[,ix3.other]) 
+  print(x0.other.level)
+  print(x1.other.level)
+  print(x2.other.level)
+  print(x3.other.level)
+  # set the hidden (other) variable 
+  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
+  row_lnth<-nrow(WTD_arr)
+  x <- "Welcome to Programiz"
+  print(row_lnth)
+  
+  new <- data.frame( WTD_arr,rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
+                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
+                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
+                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
+  
+  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
+  
+  #new_fit_array<-add_fitted(new,model)
+  prediction_wtd00<-predict(model,new,se.fit = TRUE)
+  #print(prediction_wtd00)
+  
+  prediction.lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
+  #print(prediction.lci)
+  prediction.fit <- prediction_wtd00$fit
+  prediction.uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
+  
+  WTD_reverse=(new[,1]*sd(data[,ix0.ori]))+mean(data[,ix0.ori])
+  
+  new_fit_array<-as.data.frame(cbind(new,prediction.lci,prediction.fit,prediction.uci,WTD_reverse))
+  names(new_fit_array) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other,'lci','fit','uci','WTD_reverse' ) 
+  
+  return(new_fit_array)
+}
+
+
+
+
+
+Model_Seg_Prediction_Region_TreeHeight<- function( data, model,WTD_Array, x0.ori = 'WTD_ori',  x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', TH.value=0, moment = mean) {
+  
+  ix0.ori <- match(x0.ori, names(data))
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  ix2<- match(x2.var, names(data))
+  ix3<- match(x3.var, names(data))
+  ix4<- match(x4.var, names(data))
+  
+  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
+  ix1.other<- match(x1.other, names(data))
+  ix2.other<- match(x2.other, names(data))
+  ix3.other<- match(x3.other, names(data))
+  ix4.other<- match(x4.other, names(data))
+  
+  iy <- match(y.var, names(data))
+  
+  
+  x1.level <- moment(data[,ix1])
+  x2.level <- moment(data[,ix2])
+  x3.level <- TH.value#moment(data[,ix3])
+  x4.level <- moment(data[,ix4])
+  print(x1.level)
+  print(x2.level)
+  print(x3.level)
+  print(x4.level)
+  
+  x0.other.level <- moment(data[,ix0.other]) 
+  x1.other.level <- moment(data[,ix1.other]) 
+  x2.other.level <- moment(data[,ix2.other]) 
+  x3.other.level <- moment(data[,ix3.other]) 
+  print(x0.other.level)
+  print(x1.other.level)
+  print(x2.other.level)
+  print(x3.other.level)
+  # set the hidden (other) variable 
+  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
+  row_lnth<-nrow(WTD_arr)
+  x <- "Welcome to Programiz"
+  print(row_lnth)
+  
+  new <- data.frame( WTD_arr,rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
+                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
+                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
+                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
+  
+  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
+  
+  #new_fit_array<-add_fitted(new,model)
+  prediction_wtd00<-predict(model,new,se.fit = TRUE)
+  #print(prediction_wtd00)
+  
+  prediction.lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
+  #print(prediction.lci)
+  prediction.fit <- prediction_wtd00$fit
+  prediction.uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
+  
+  WTD_reverse=(new[,1]*sd(data[,ix0.ori]))+mean(data[,ix0.ori])
+  
+  new_fit_array<-as.data.frame(cbind(new,prediction.lci,prediction.fit,prediction.uci,WTD_reverse))
+  names(new_fit_array) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other,'lci','fit','uci','WTD_reverse' ) 
+  
+  return(new_fit_array)
+}
+
+
+
+#----------------------functions for panel E-------------------------------------
+summary_group_full<-function(data,x0.var='EVI_anomaly',x1.var='EVI_anomaly_corrected', flag=1) # if using EVI_anomaly_corrected, flag=1 
+{
+  Summary_Geo=summary_group_simple(data,flag)
+  Summary_Geo<-Summary_Geo[which(Summary_Geo$N >=4 & Summary_Geo$HAND_CLASS <=40  & Summary_Geo$HAND_CLASS >=2),]
+  Summary_Geo<-data.frame(Summary_Geo$HAND_CLASS,Summary_Geo$EVI_anomaly_corrected,Summary_Geo$ci,Summary_Geo$se)
+  names(Summary_Geo) <- c('HAND_CLASS',x0.var,'ci','se')  # Brando_summary_Geo$ci <=1.5 ),]
+  return(Summary_Geo)
+}
+
+summary_group_simple<-function(Input_model.data, group_flag){
+  if (group_flag ==1) {
+    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly_corrected", groupvars=c("HAND_CLASS"))   #"Residual_R"
+  } else{ if (group_flag ==0) {
+    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly", groupvars=c("HAND_CLASS")) 
+  }else {
+    Residual_summary <- summarySE(Input_model.data, measurevar="Prediction", groupvars=c("HAND_CLASS")) 
+  }
+  }
+  return(Residual_summary)
+}
+
 merge_figures_sameunits<-function(base_plt,over_plt){
   
   plot_theme <- function(p) {
@@ -411,7 +907,6 @@ Model_Seg_Prediction<- function( data, model, x0.var = 'WTD', x1.var = 'SoilFert
   ix4.other<- match(x4.other, names(data))
   
   iy <- match(y.var, names(data))
-  
   
   x1.level <- moment(data[data[,ix4.other]== Seg,ix1])
   x2.level <- moment(data[data[,ix4.other] == Seg,ix2])
