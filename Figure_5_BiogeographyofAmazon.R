@@ -28,7 +28,7 @@ setwd("F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests")
 ############################################################################################################
 
 # These are the remote sensed aggregated 0.4 degree data; see documentation for definition of variables 
-file_path="F:/csl/HAND/Seasonal results/Brando_Model/new_basin/LDD/Test/"
+file_path="F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests/data/"
 Drought_year='2005'                                                                            
 
 file_name=paste('BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet',Drought_year,'_000.csv',sep='')
@@ -121,81 +121,117 @@ FulxTower_adjust_new.data$Prediction=fitted(mod.IA_Guiana)
 
 #-------------------------------------Figure 5 Panel A  Resilience-------------------------------------------
 # Biogeography of drought --- simplied  whole basin 2015 drought _04Degree
+##-------------- Read Ecotope data files----------------------------------------------------------------------
+gc()
+file_path="F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests/data/"
+Drought_year='2005'                                                                            
+file_name=paste('BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand',Drought_year,'_000.csv',sep='') 
+file_ful_path=paste(file_path,Drought_year,"/",file_name,sep='')
+Ecotope.data_2005<- read.csv(file=file_ful_path,header=T) 
+
+Drought_year='2010'                                                                            
+file_name=paste('BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand',Drought_year,'_000.csv',sep='') 
+file_ful_path=paste(file_path,Drought_year,"/",file_name,sep='')
+Ecotope.data_2010<- read.csv(file=file_ful_path,header=T) 
+
+Drought_year='2015'                                                                            
+file_name=paste('BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand',Drought_year,'_000.csv',sep='') 
+file_ful_path=paste(file_path,Drought_year,"/",file_name,sep='')
+Ecotope.data_2015<- read.csv(file=file_ful_path,header=T) 
+
+Ecotope.data_2005$year=""
+Ecotope.data_2005$year="2005"
+Ecotope.data_2010$year=""
+Ecotope.data_2010$year="2010"
+Ecotope.data_2015$year=""
+Ecotope.data_2015$year="2015"
+
+Ecotope.data_2<-merge(Ecotope.data_2005,Ecotope.data_2010,all = TRUE)
+Ecotope.data<-merge(Ecotope.data_2,Ecotope.data_2015,all = TRUE)
+
+#names(Ecotope.data)
+
+rm(Ecotope.data_2005)
+rm(Ecotope.data_2010)
+rm(Ecotope.data_2015)
+rm(Ecotope.data_2)
+
+
 
 #---calculate the values from model data-------
-Drought_04De_new.data_BStmp<-Drought_04De_new.data_beforscaling
+Ecotope.data_BStmp<-Ecotope.data
 
 
 #----calculate the whole basin for all evergreen forest--
-Drought_04De_new.data_BS_ad<-Drought_04De_new.data_BStmp
-Drought_04De_new.data_BS_ad<-Drought_04De_new.data_BS_ad[which(Drought_04De_new.data_BS_ad$SegGeo_number >= 0 & Drought_04De_new.data_BS_ad$SegGeo_number <=36  & Drought_04De_new.data_BS_ad$WTD <=10000),]
+Ecotope.data_BS_ad<-Ecotope.data_BStmp
+Ecotope.data_BS_ad<-Ecotope.data_BS_ad[which(Ecotope.data_BS_ad$SegGeo_number >= 0 & Ecotope.data_BS_ad$SegGeo_number <=36  & Ecotope.data_BS_ad$WTD <=10000),]
 
-Drought_04De_new2.data_BS_ad<-Drought_04De_new.data_BS_ad[which(  is.finite(Drought_04De_new.data_BS_ad$SoilFertility) &  is.finite(Drought_04De_new.data_BS_ad$Tree_Height) &  is.finite(Drought_04De_new.data_BS_ad$SoilSand_content) & Drought_04De_new.data_BS_ad$year =="2015" &  is.finite(Drought_04De_new.data_BS_ad$WTD) & Drought_04De_new.data_BS_ad$WTD <=100 & Drought_04De_new.data_BS_ad$SoilSand_content <=0.9),] # 
+Drought_04De_new2.data_BS_ad<-Ecotope.data_BS_ad[which(  is.finite(Ecotope.data_BS_ad$SoilFertility) &  is.finite(Ecotope.data_BS_ad$Tree_Height) &  is.finite(Ecotope.data_BS_ad$SoilSand_content) & Ecotope.data_BS_ad$year =="2015" &  is.finite(Ecotope.data_BS_ad$WTD) & Ecotope.data_BS_ad$WTD <=100 & Ecotope.data_BS_ad$SoilSand_content <=0.9 & Ecotope.data_BS_ad$Long !=0  & Ecotope.data_BS_ad$Lat !=0 ),] # 
 
-Drought_04De_new.data_BS_ad<-data.frame(Drought_04De_new2.data_BS_ad$PAR_anomaly,Drought_04De_new2.data_BS_ad$VPD_anomaly,Drought_04De_new2.data_BS_ad$Pre_anomaly, Drought_04De_new2.data_BS_ad$MCWD_anomaly,Drought_04De_new2.data_BS_ad$WTD,Drought_04De_new2.data_BS_ad$WTD,Drought_04De_new2.data_BS_ad$SoilFertility,Drought_04De_new2.data_BS_ad$SoilSand_content,Drought_04De_new2.data_BS_ad$Tree_Height,Drought_04De_new2.data_BS_ad$MCWD_STD,Drought_04De_new2.data_BS_ad$DrySeasonLength,Drought_04De_new2.data_BS_ad$EVI_anomaly,Drought_04De_new2.data_BS_ad$Long,Drought_04De_new2.data_BS_ad$Lat,Drought_04De_new2.data_BS_ad$SegGeo_number,Drought_04De_new2.data_BS_ad$HAND_CLASS,Drought_04De_new2.data_BS_ad$year)#SoilSand_content
+Ecotope.data_BS_ad<-data.frame(Drought_04De_new2.data_BS_ad$PAR_anomaly,Drought_04De_new2.data_BS_ad$VPD_anomaly,Drought_04De_new2.data_BS_ad$Pre_anomaly, Drought_04De_new2.data_BS_ad$MCWD_anomaly,Drought_04De_new2.data_BS_ad$WTD,Drought_04De_new2.data_BS_ad$WTD,Drought_04De_new2.data_BS_ad$SoilFertility,Drought_04De_new2.data_BS_ad$SoilSand_content,Drought_04De_new2.data_BS_ad$Tree_Height,Drought_04De_new2.data_BS_ad$MCWD_STD,Drought_04De_new2.data_BS_ad$DrySeasonLength,Drought_04De_new2.data_BS_ad$EVI_anomaly,Drought_04De_new2.data_BS_ad$Long,Drought_04De_new2.data_BS_ad$Lat,Drought_04De_new2.data_BS_ad$SegGeo_number,Drought_04De_new2.data_BS_ad$HAND_CLASS,Drought_04De_new2.data_BS_ad$year)#SoilSand_content
 
-names(Drought_04De_new.data_BS_ad)<-c('PAR_anomaly','VPD_anomaly','Pre_anomaly','MCWD_anomaly','WTD','HAND','SoilFertility','SoilSand_content','TreeHeight','MCWD_STD','DrySeasonLength','EVI_anomaly','Long','Lat','SegGeo_number','HAND_CLASS','year')
-
-
+names(Ecotope.data_BS_ad)<-c('PAR_anomaly','VPD_anomaly','Pre_anomaly','MCWD_anomaly','WTD','HAND','SoilFertility','SoilSand_content','TreeHeight','MCWD_STD','DrySeasonLength','EVI_anomaly','Long','Lat','SegGeo_number','HAND_CLASS','year')
 
 
-Drought_04De_new.data_BS_ha<-Drought_04De_new.data_BS_ad
+
+
+Ecotope.data_BS_ad_ha<-Ecotope.data_BS_ad
 
 #---------------------------------------------
-Drought_04De_new.data_BS_ha$HAND_CLASS<-floor(Drought_04De_new.data_BS_ha$HAND)+1 ## 0.4 Degree
+Ecotope.data_BS_ad_ha$HAND_CLASS<-floor(Ecotope.data_BS_ad_ha$HAND)+1 ## 0.4 Degree
 
-Drought_04De_new.data_BS_ha[which(Drought_04De_new.data_BS_ha$HAND_CLASS >= 1),]$HAND_CLASS=Drought_04De_new.data_BS_ha[which(Drought_04De_new.data_BS_ha$HAND_CLASS >= 1),]$HAND_CLASS-1
-Drought_04De_new.data_BS_ha[which(Drought_04De_new.data_BS_ha$HAND_CLASS >= 0),]$HAND_CLASS=(Drought_04De_new.data_BS_ha[which(Drought_04De_new.data_BS_ha$HAND_CLASS >= 0),]$HAND_CLASS%/%2+1)*2
-Drought_04De_new.data_BS_ha[which(Drought_04De_new.data_BS_ha$HAND_CLASS== -1),]$HAND_CLASS=Drought_04De_new.data_BS_ha[which(Drought_04De_new.data_BS_ha$HAND_CLASS == -1),]$HAND_CLASS-0
-Drought_04De_new.data_BS_ha[which(Drought_04De_new.data_BS_ha$HAND_CLASS >= 0),]$HAND_CLASS=Drought_04De_new.data_BS_ha[which(Drought_04De_new.data_BS_ha$HAND_CLASS >= 0),]$HAND_CLASS-1
+Ecotope.data_BS_ad_ha[which(Ecotope.data_BS_ad_ha$HAND_CLASS >= 1),]$HAND_CLASS=Ecotope.data_BS_ad_ha[which(Ecotope.data_BS_ad_ha$HAND_CLASS >= 1),]$HAND_CLASS-1
+Ecotope.data_BS_ad_ha[which(Ecotope.data_BS_ad_ha$HAND_CLASS >= 0),]$HAND_CLASS=(Ecotope.data_BS_ad_ha[which(Ecotope.data_BS_ad_ha$HAND_CLASS >= 0),]$HAND_CLASS%/%2+1)*2
+Ecotope.data_BS_ad_ha[which(Ecotope.data_BS_ad_ha$HAND_CLASS== -1),]$HAND_CLASS=Ecotope.data_BS_ad_ha[which(Ecotope.data_BS_ad_ha$HAND_CLASS == -1),]$HAND_CLASS-0
+Ecotope.data_BS_ad_ha[which(Ecotope.data_BS_ad_ha$HAND_CLASS >= 0),]$HAND_CLASS=Ecotope.data_BS_ad_ha[which(Ecotope.data_BS_ad_ha$HAND_CLASS >= 0),]$HAND_CLASS-1
 
 
 
 #-------------------Calculate mean of region/basin---------------
-Drought_04De_new.data_BS_ha_mean<-Drought_04De_new.data_BS_ha
+Ecotope.data_BS_ad_ha_mean<-Ecotope.data_BS_ad_ha
 
-Model_fit_array<-Model_Seg_Resilience(Drought_04De_new.data_BS_ha_mean,FulxTower_adjust_new.data3,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', moment = mean)
+Model_fit_array<-Model_Seg_Resilience(Ecotope.data_BS_ad_ha_mean,Drought_04De_new.data_beforscaling,mod.IA_Guiana,x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', moment = mean)
 
-Drought_04De_new.data_BS_ha_mean$EVI_anomaly_fit_mean=Model_fit_array$.value
+Ecotope.data_BS_ad_ha_mean$EVI_anomaly_fit_mean<- Model_fit_array$.value
+Ecotope.data_BS_ad_ha_mean$EVI_anomaly_fit_standardize<- (Ecotope.data_BS_ad_ha_mean$EVI_anomaly_fit_mean-mean(Ecotope.data_BS_ad_ha_mean$EVI_anomaly_fit_mean))/sd(Ecotope.data_BS_ad_ha_mean$EVI_anomaly_fit_mean)
+
 currentTime <-Sys.Date()
 
 file_ful_path=paste(file_path,Drought_year,"/",currentTime,"Seg_All_2015_MAIAC_Biogeograpy.csv"  ,sep='') #
-write.csv(Drought_04De_new.data_BS_ha_mean,file =file_ful_path,row.names = F) 
+write.csv(Ecotope.data_BS_ad_ha_mean,file =file_ful_path,row.names = F) 
 
 
 ##-------------------------------------------Figure 5 Panel C--------------------------------------
-
-
-
+Amazon_biogeography<-Ecotope.data_BS_ad_ha_mean
 Amazon_biogeography_data<-Amazon_biogeography[which( is.finite(Amazon_biogeography$EVI_anomaly_fit_standardize) ),]#& 
 
 Amazon_biogeography_data$Type=""
 
-Amazon_biogeography_data[which( Amazon_biogeography_data$WTD_ori <= 10 & Amazon_biogeography_data$SF_ori <=(-0.35) & Amazon_biogeography_data$TH_ori<= 32.5),]$Type="67"#"77"#"Shallow_Infertile_Short" 
-Amazon_biogeography_data[which( Amazon_biogeography_data$WTD_ori > 10 &
-                                  Amazon_biogeography_data$SF_ori <=(-0.35) & Amazon_biogeography_data$TH_ori<= 32.5),]$Type="52"#"Deep_Infertile_Short" 
-Amazon_biogeography_data[which( Amazon_biogeography_data$WTD_ori <= 10 &
-                                  Amazon_biogeography_data$SF_ori >(-0.35) & Amazon_biogeography_data$TH_ori<= 32.5),]$Type="48"#"Shallow_Fertile_Short" 
-Amazon_biogeography_data[which( Amazon_biogeography_data$WTD_ori <= 10 &
-                                  Amazon_biogeography_data$SF_ori <=(-0.35) & Amazon_biogeography_data$TH_ori> 32.5),]$Type="75"#"65"#"Shallow_Infertile_Tall" 
-Amazon_biogeography_data[which( Amazon_biogeography_data$WTD_ori <= 10 &
-                                  Amazon_biogeography_data$SF_ori >(-0.35) & Amazon_biogeography_data$TH_ori> 32.5),]$Type="26"#"Shallow_Fertile_Tall" 
+Amazon_biogeography_data[which( Amazon_biogeography_data$WTD <= 10 & Amazon_biogeography_data$SoilFertility <=(-0.35) & Amazon_biogeography_data$TreeHeight<= 32.5),]$Type="67"#"77"#"Shallow_Infertile_Short" 
+Amazon_biogeography_data[which( Amazon_biogeography_data$WTD > 10 &
+                                  Amazon_biogeography_data$SoilFertility <=(-0.35) & Amazon_biogeography_data$TreeHeight<= 32.5),]$Type="52"#"Deep_Infertile_Short" 
+Amazon_biogeography_data[which( Amazon_biogeography_data$WTD <= 10 &
+                                  Amazon_biogeography_data$SoilFertility >(-0.35) & Amazon_biogeography_data$TreeHeight<= 32.5),]$Type="48"#"Shallow_Fertile_Short" 
+Amazon_biogeography_data[which( Amazon_biogeography_data$WTD <= 10 &
+                                  Amazon_biogeography_data$SoilFertility <=(-0.35) & Amazon_biogeography_data$TreeHeight> 32.5),]$Type="75"#"65"#"Shallow_Infertile_Tall" 
+Amazon_biogeography_data[which( Amazon_biogeography_data$WTD <= 10 &
+                                  Amazon_biogeography_data$SoilFertility >(-0.35) & Amazon_biogeography_data$TreeHeight> 32.5),]$Type="26"#"Shallow_Fertile_Tall" 
 
-Amazon_biogeography_data[which( Amazon_biogeography_data$WTD_ori > 10 &
-                                  Amazon_biogeography_data$SF_ori <=(-0.35) & Amazon_biogeography_data$TH_ori> 32.5),]$Type="83"#"Deep_Infertile_Tall" 
+Amazon_biogeography_data[which( Amazon_biogeography_data$WTD > 10 &
+                                  Amazon_biogeography_data$SoilFertility <=(-0.35) & Amazon_biogeography_data$TreeHeight> 32.5),]$Type="83"#"Deep_Infertile_Tall" 
 
-Amazon_biogeography_data[which( Amazon_biogeography_data$WTD_ori > 10 &
-                                  Amazon_biogeography_data$SF_ori >(-0.35) & Amazon_biogeography_data$TH_ori<= 32.5),]$Type="11"#"Deep_Fertile_Short"
+Amazon_biogeography_data[which( Amazon_biogeography_data$WTD > 10 &
+                                  Amazon_biogeography_data$SoilFertility >(-0.35) & Amazon_biogeography_data$TreeHeight<= 32.5),]$Type="11"#"Deep_Fertile_Short"
 
-Amazon_biogeography_data[which( Amazon_biogeography_data$WTD_ori > 10 &
-                                  Amazon_biogeography_data$SF_ori>(-0.35) & Amazon_biogeography_data$TH_ori> 32.5),]$Type="34"#"Deep_Fertile_Tall" 
+Amazon_biogeography_data[which( Amazon_biogeography_data$WTD > 10 &
+                                  Amazon_biogeography_data$SoilFertility>(-0.35) & Amazon_biogeography_data$TreeHeight> 32.5),]$Type="34"#"Deep_Fertile_Tall" 
 
 threshold_resilience=0.15
 Amazon_biogeography_data$Resilience_Type=""
 Amazon_biogeography_data[which( Amazon_biogeography_data$EVI_anomaly_fit_standardize <=(-1*threshold_resilience)),]$Resilience_Type="Vulnerable"
 Amazon_biogeography_data[which( Amazon_biogeography_data$EVI_anomaly_fit_standardize >=(threshold_resilience)),]$Resilience_Type="Resilient"
 Amazon_biogeography_data[which(
-  Amazon_biogeography_data$EVI_anomaly_fit_standardize <(threshold_resilience) & Amazon_biogeography_data$EVI_anomaly_fit_standardize >(-1*threshold_resilience)),]$Resilience_Type="SLittle response"
+  Amazon_biogeography_data$EVI_anomaly_fit_standardize <(threshold_resilience) & Amazon_biogeography_data$EVI_anomaly_fit_standardize >(-1*threshold_resilience)),]$Resilience_Type="uNeutral"
 
 
 
@@ -210,11 +246,12 @@ cbPalette <- c("#006837",  "#88419D",  "#08519c", "#08519c","#D9D9D9","#969696")
 cbPalette <- c(  "#08519c",  "#88419D","#006837", "#08519c","#D9D9D9","#969696","#006837",  "#88419D")
 cbPalette <- c( "#599F40FF","#F9E8A1FF", "#E46F00FF"  )
 
-p2 <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type), group =  factor(Resilience_Type), fill = factor(Resilience_Type)    ))+ #,  group = factor(year), fill = factor(year)  
+Figure5_PanelC_P <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type), group =  factor(Resilience_Type), fill = factor(Resilience_Type)    ))+ #,  group = factor(year), fill = factor(year)  
   geom_bar(alpha=I(0.3),colour="#737373", width=0.4,size=0.3,position = "fill") +  #colour="#737373", count  fill=cbPalette[3],
-  #  geom_bar(stat = "identity", position =  position_dodge(),alpha=I(0.3),colour="#737373")+ # position="identity"
   
   scale_fill_manual(values = cbPalette)+
+  xlab("Ecotope Stategies") +
+  ylab("Proportion") +
   scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) + 
   # scale_x_continuous(limits =c(0,60), breaks=seq(0,60,  by=20))
   theme_few() %+replace% 
@@ -225,21 +262,17 @@ p2 <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type), group = 
   theme(axis.title=element_text(size=24))+ 
   theme(plot.title=element_text(size=24))
 
-p2
+Figure5_PanelC_P
 
 
-
-
-p3 <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type)   ))+ #,  group = factor(year), fill = factor(year) 
+Figure5_PanelC_P2 <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type)   ))+ #,  group = factor(year), fill = factor(year) 
   geom_bar(aes(group =  factor(Resilience_Type), fill = factor(Resilience_Type) ),alpha=I(0.3),colour="#737373", width=0.4,size=0.3,position = "fill") + 
   
   
   geom_bar(aes(y=..count../sum(..count..)),alpha=I(0.3),colour="#737373", width=0.4,size=0.3, position = "dodge") +  #colour="#737373", count  fill=cbPalette[3],
-  #  geom_bar(stat = "identity", position =  position_dodge(),alpha=I(0.3),colour="#737373")+ # position="identity"
-  
+
   scale_fill_manual(values = cbPalette)+
   scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) + 
-  # scale_x_continuous(limits =c(0,60), breaks=seq(0,60,  by=20))
   theme_few() %+replace% 
   theme(panel.background = element_rect(fill = NA,colour = "black", 
                                         size =1)) +
@@ -248,22 +281,22 @@ p3 <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type)   ))+ #, 
   theme(axis.title=element_text(size=24))+ 
   theme(plot.title=element_text(size=24))
 
-p3
+Figure5_PanelC_P2
+
 
 
 rangeMin=-1.5
 rangeMax=1.5
 BY_increase=0.5
-p1 <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type),y=EVI_anomaly_fit_standardize   ))+ #,  group = factor(year), fill = factor(year) 
-  # geom_bar(aes(group =  factor(Resilience_Type), fill = factor(Resilience_Type) ),alpha=I(0.3),colour="#737373", width=0.4,size=0.3,position = "fill") + 
+Figure5_PanelC_RR <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type),y=EVI_anomaly_fit_standardize   ))+ #,  group = factor(year), fill = factor(year) 
   
-  geom_bar(stat = "summary", fun = "mean",alpha=I(0.5),)+
-  # geom_bar(aes(y=..count../sum(..count..)),alpha=I(0.3),colour="#737373", width=0.4,size=0.3, position = "dodge") +  #colour="#737373", count  fill=cbPalette[3],
-  #  geom_bar(stat = "identity", position =  position_dodge(),alpha=I(0.3),colour="#737373")+ # position="identity"
-  
+  geom_bar(stat = "summary", fun = "mean",alpha=I(0.5),fill="white",colour="blue")+
+  #geom_errorbar(data=data_tmp,aes(ymin=mean_Resilience, ymax=mean_Resilience,colour="blue"))+
   scale_fill_manual(values = cbPalette)+
   scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) + 
-  # scale_x_continuous(limits =c(0,60), breaks=seq(0,60,  by=20))
+  xlab("Ecotope Stategies") +
+  ylab("Relative resilience") +
+  #scale_y_continuous(sec.axis = sec_axis(~. , name = "secondary axis")) +
   theme_few() %+replace% 
   theme(panel.background = element_rect(fill = NA,colour = "black", 
                                         size =1)) +
@@ -272,28 +305,47 @@ p1 <- ggplot(data=Amazon_biogeography_data, mapping=aes(x=factor(Type),y=EVI_ano
   theme(axis.title=element_text(size=24))+ 
   theme(plot.title=element_text(size=24))
 
-p1
+Figure5_PanelC_RR
 
 
-mean(Amazon_biogeography_data[which(Amazon_biogeography_data$Type=="11"),]$EVI_anomaly_fit_standardize)
-
-mean(Amazon_biogeography_data[which(Amazon_biogeography_data$Type=="26"),]$EVI_anomaly_fit_standardize)
-
-mean(Amazon_biogeography_data[which(Amazon_biogeography_data$Type=="34"),]$EVI_anomaly_fit_standardize)
-
-mean(Amazon_biogeography_data[which(Amazon_biogeography_data$Type=="48"),]$EVI_anomaly_fit_standardize)
-
-mean(Amazon_biogeography_data[which(Amazon_biogeography_data$Type=="52"),]$EVI_anomaly_fit_standardize)
-
-mean(Amazon_biogeography_data[which(Amazon_biogeography_data$Type=="65"),]$EVI_anomaly_fit_standardize)
-
-mean(Amazon_biogeography_data[which(Amazon_biogeography_data$Type=="77"),]$EVI_anomaly_fit_standardize)
-
-mean(Amazon_biogeography_data[which(Amazon_biogeography_data$Type=="83"),]$EVI_anomaly_fit_standardize)
-
+Figure5_PanelC<-merge_figures_sameunits(Figure5_PanelC_P,Figure5_PanelC_RR)
+grid.draw(Figure5_PanelC)
 
 
 #---------------------------------------function for Figure 5----------------------------
+
+
+merge_figures_sameunits<-function(base_plt,over_plt){
+  
+  plot_theme <- function(p) {
+    plyr::defaults(p$theme, theme_get())
+  }
+  
+  base_g = ggplot_gtable(ggplot_build(base_plt))
+  overlay_g = ggplot_gtable(ggplot_build(over_plt))
+  
+  plt_panel = c(subset(base_g$layout, name == "panel", se = t:r))
+  pnl_ind = which(overlay_g$layout$name == "panel")
+  leg_ind = which(overlay_g$layout$name == "guide-box") 
+  final_grob = gtable_add_grob(base_g,
+                               overlay_g$grobs[[pnl_ind]],
+                               plt_panel$t,
+                               plt_panel$l,
+                               plt_panel$b,
+                               plt_panel$r, name = "a")
+  
+  #final_grob = gtable_add_grob(final_grob,
+  #overlay_g$grobs[[leg_ind]],
+ # plt_panel$t,
+ # plt_panel$l,
+ # plt_panel$b,
+ # plt_panel$r, name = "b") #
+  return(final_grob)
+  
+}
+
+
+
 Model_Seg_Resilience<- function( data, data.training, model, x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly',  moment = mean) {
   
   ix0 <- match(x0.var, names(data))
