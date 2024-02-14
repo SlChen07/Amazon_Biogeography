@@ -38,10 +38,10 @@ Contents
 			
 2. The scripts to recreate the main analyses and the main figures are provided:
 			
-	1.Figure_2_2005_Drought_Responses
+	1.Figure_2_2005_Drought_Responses.R
    		
-	2.Figure_3_SouthernAmazon_Drought_Responses
+	2.Figure_3_SouthernAmazon_Drought_Responses.R
    		
-	3.Figure_4_EcotopeDroughtResponses
+	3.Figure_4_EcotopeDroughtResponses.R
    		
-	4.Figure_5_BiogeographyofAmazon
+	4.Figure_5_BiogeographyofAmazon.R
