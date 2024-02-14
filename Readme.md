@@ -23,19 +23,18 @@ Data and R-code from 'Shuli Chen, Scott C Stark, Antonio Donato Nobre, Luz Adria
 Contents
 ===========
 			
-1. Datafiles to recreate the main analyses and the main figures are provided as enlisted below. For associtaed metadata, please refer to file Read.xlsx Sheet "Read definitions".
+1. Datafiles to recreate the main analyses and the main figures are provided as enlisted below. For header definitions and units, please refer to file Read.xlsx Sheet "Read definitions".
      
-	Brando_NormalPAR2_wtdhandFULL3_GeoSegSteege_correctLocalMean9_50mRearrange_flood_droughtduration2_dsl2005.csv		
-	BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet2005_000.csv		
-	BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet2010_000.csv		
-	BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet2015_000.csv		
-	BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand2005_000		
-	BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand2010_000		
-	BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand2015_000		
-	Brienen_Basin_validation.csv		
-	Brienen_RAINFOR_Efforts.csv		
-	Brienen_RAINFOR_Efforts_HAND.csv		
-	Please, see header definitions for explanation of the variables. 		
+- Brando_NormalPAR2_wtdhandFULL3_GeoSegSteege_correctLocalMean9_50mRearrange_flood_droughtduration2_dsl2005.csv		
+- BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet2005_000.csv		
+- BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet2010_000.csv		
+- BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet2015_000.csv		
+- BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand2005_000		
+- BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand2010_000		
+- BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_H_BiogeographyLandcoverSoilSand2015_000		
+- Brienen_Basin_validation.csv		
+- Brienen_RAINFOR_Efforts.csv		
+- Brienen_RAINFOR_Efforts_HAND.csv		 		
 			
 3. The scripts to recreate the main analyses and the main figures are provided:
 			
