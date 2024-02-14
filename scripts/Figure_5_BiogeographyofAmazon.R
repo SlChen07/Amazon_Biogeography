@@ -20,29 +20,26 @@ library(grid);library(ggthemes);library(RColorBrewer);library(plotly);library(Mu
 library(mvdalab);library(gamlss);library(gamlss.dist);library(gamlss.add);library(fitdistrplus);library(logspline);
 library(pracma);library(lubridate);library(r2d2);library(paletteer);library(viridis);library(patchwork)
 
-# set your own working directory
-setwd("F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests")
-
 ############################################################################################################
 # DATASETS REQUIRED:
 ############################################################################################################
 
 # These are the remote sensed aggregated 0.4 degree data; see documentation for definition of variables 
-file_path="F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests/data/"
+file_path="data/"
 Drought_year='2005'                                                                            
 
 file_name=paste('BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet',Drought_year,'_000.csv',sep='')
-file_ful_path=paste(file_path,Drought_year,"/",file_name,sep='')
+file_ful_path=paste(file_path,file_name,sep='')
 Drought_04De.data_2005<- read.csv(file=file_ful_path,header=T) 
 
 Drought_year='2010'                                                                            
 file_name=paste('BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet',Drought_year,'_000.csv',sep='')
-file_ful_path=paste(file_path,Drought_year,"/",file_name,sep='')
+file_ful_path=paste(file_path,file_name,sep='')
 Drought_04De.data_2010<- read.csv(file=file_ful_path,header=T) 
 
 Drought_year='2015'                                                                            
 file_name=paste('BrandoGrid_NormalPAR2_HANDAnoFULL1_GeoSteege_correctLocalMeanRemoval9_60m04De_All_Recall3_SandDryWet',Drought_year,'_000.csv',sep='')
-file_ful_path=paste(file_path,Drought_year,"/",file_name,sep='')
+file_ful_path=paste(file_path,file_name,sep='')
 Drought_04De.data_2015<- read.csv(file=file_ful_path,header=T) 
 
 #---------merge datasets-------------------
