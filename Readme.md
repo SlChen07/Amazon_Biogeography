@@ -15,7 +15,7 @@ When using this data, please cite the original article:
 
 Shuli Chen*, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska*		
 			
-Additionally, please cite the data package:		
+Additionally, please cite this data package as:		
 
 Data and R-code from 'Shuli Chen, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska. DOI 		
 
@@ -36,7 +36,7 @@ Contents
 - Brienen_RAINFOR_Efforts.csv		
 - Brienen_RAINFOR_Efforts_HAND.csv		 		
 			
-3. The scripts to recreate the main analyses and the main figures are provided:
+2. The scripts to recreate the main analyses and the main figures are provided:
 			
 	1.Figure_2_2005_Drought_Responses
    		
