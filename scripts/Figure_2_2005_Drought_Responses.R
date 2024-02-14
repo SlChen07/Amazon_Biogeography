@@ -13,15 +13,12 @@ gc()
 rm(list=ls(all=TRUE))
 
 #Packages required:  
-library(mgcv); library(qgam); library(mgcViz);library(gam);library(plm);library(LaplacesDemon);
-library(dplyr);library(gratia);library(rlang);require(fields);library(MASS);library(smatr);library(ggplot2);library(ggpmisc);
-library(Rmisc) ;library(lattice);library(plyr);library(data.table);library(ggsignif);library(dplyr);library(scales);
-library(grid);library(ggthemes);library(RColorBrewer);library(plotly);library(MuMIn);library(Hotelling);
-library(mvdalab);library(gamlss);library(gamlss.dist);library(gamlss.add);library(fitdistrplus);library(logspline);
-library(pracma);library(lubridate);library(r2d2);library(paletteer);library(viridis);library(patchwork)
-
-# set your own working directory
-setwd("F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests")
+if (!require("pacman")) install.packages("pacman"); library(pacman)
+pacman::p_load(tidyverse, mgcv, qgam, mgcViz, gam, collapse, plm, LaplacesDemon, 
+               gratia, rlang, fields, MASS, smatr, ggpmisc, Rmisc, 
+               lattice, ggsignif, scales, grid, ggthemes, RColorBrewer,
+               plotly, MuMIn, Hotelling, mvdalab, gamlss, gamlss.dist,
+               gamlss.add, fitdistrplus, logspline, pracma, sp, r2d2, paletteer, viridis, patchwork)
 
 ############################################################################################################
 # DATASETS REQUIRED:
@@ -29,11 +26,11 @@ setwd("F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests")
 
 # These are the remote sensed 1km data; see documentation for definition of variables 
 ## Read HAND_Ano data files
-file_path="F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests/data/"
+file_path="data/"
 Drought_year='2005'                                                                            
 file_name=paste('BrandoNIRvCombine_NormalPAR2_wtdhandFULL3_GeoSegSteege_correctLocalMean9_50mRearrange_flood_droughtduration2_dsl2',Drought_year,'.csv',sep='')#_dsl
 
-file_ful_path=paste(file_path,Drought_year,"/",file_name,sep='')
+file_ful_path=paste(file_path,file_name,sep='')
 file_ful_path
 
 Drought.data_2005<- read.csv(file=file_ful_path,header=T) 
