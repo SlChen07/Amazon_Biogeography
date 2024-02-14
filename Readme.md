@@ -1,7 +1,7 @@
 About
 ===========
 
-This is a repository of codes and data to reproduce the main analyses and figures from 
+This is a repository of codes and data to reproduce the main analyses and figures from the article:
 
 'Shuli Chen, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska. DOI 
 
