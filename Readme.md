@@ -5,17 +5,19 @@ This is a repository of codes and data to reproduce the main analyses and figure
 
 'Shuli Chen, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska. DOI 
 
-This repository also contains Codes and data to repreoduce the main figures of the Nature paper (Tavares et al., 2023):			
+This repository also contains scripts and data to repreoduce the main figures of the Nature paper (Tavares et al., 2023):			
  "Basin-wide variation in tree hydraulic safety margins predicts the carbon balance of Amazon forests"			
 			
 Data Use Policy
 ===========			
 
 When using this data, please cite the original article:		
-	Shuli Chen*, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska*		
+
+Shuli Chen*, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska*		
 			
 Additionally, please cite the data package:		
-	Data and R-code from 'Shuli Chen, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska. DOI 		
+
+Data and R-code from 'Shuli Chen, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska. DOI 		
 
 
 Contents
