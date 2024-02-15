@@ -31,7 +31,7 @@ setwd("F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests")
 ## These are the remote sensed aggregated 0.4 degree data; see documentation for definition of variables
 ## functions are listed at the end of the page
 ## Read EVI anomaly and climate data
-file_path="F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests/data/"
+file_path="data/"
 file_name=paste('SouthernAmazon_EVI_Climate_04De','.csv',sep='')
 file_ful_path=paste(file_path,"/",file_name,sep='')
 Drought_04De.data<- read.csv(file=file_ful_path,header=T) 

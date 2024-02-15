@@ -30,7 +30,7 @@ setwd("F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests")
 ## These are the remote sensed aggregated 0.4 degree data; see documentation for definition of variables 
 ## functions are listed at the end of the page
 ## Read EVI anomaly and climate data
-file_path="F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests/data/"
+file_path="data/"
 file_name=paste('ThreeDroughts_EVI_Ecotope_Climate_04De','.csv',sep='')
 file_ful_path=paste(file_path,"/",file_name,sep='')
 Drought_04De.data<- read.csv(file=file_ful_path,header=T) 
@@ -737,8 +737,7 @@ Model_Seg_Prediction_Region_TreeHeight<- function( data, model,WTD_Array, x0.ori
   ix4.other<- match(x4.other, names(data))
   
   iy <- match(y.var, names(data))
-  
-  
+
   x1.level <- moment(data[,ix1])
   x2.level <- moment(data[,ix2])
   x3.level <- TH.value#moment(data[,ix3])
@@ -1000,4 +999,4 @@ ancova_establish_slope_Guiana_04Degree_SoilSand<- function(Input_model.data){
  
   return(mod.IA) 
 }
-
+##--------------------------------------------------------------------------------------------------------------
