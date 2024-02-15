@@ -32,7 +32,7 @@ setwd("F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests")
 ## Read EVI anomaly and climate data 
 file_path="F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests/data/"
 Drought_year='2005'                                                                            
-file_name=paste('Droughtof2005_EVI_Climate_WTD','.csv',sep='')#_dsl
+file_name=paste('Droughtof2005_EVI_Climate_WTD_simple','.csv',sep='')#_simple
 file_ful_path=paste(file_path,"/",file_name,sep='')
 file_ful_path
 Drought.data_2005<- read.csv(file=file_ful_path,header=T) 
@@ -231,6 +231,5 @@ Draw_Fig2_PanelCDistribution<-function(Data,DroughtSeverity = 'Modest Drought',x
     theme(plot.title=element_text(size=24))
   return(p_Distribution)
 }
-
 ##---------------------------------------------------------------------------------------------------------------                                                                 
 
