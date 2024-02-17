@@ -182,7 +182,7 @@ Ecotope_Factors <- select(Drought_04De_new.data_BStmp, SoilFertility, DrySeasonL
 names(Ecotope_Factors)<-c('SoilFertility_ori','DrySeasonLength_ori','WTD_ori','TreeHeight_ori','SoilSand_content_ori')
 Drought_04De_new.data_BS<-as.data.frame(cbind(Drought_04De_new.data_BStmp,Ecotope_Factors))
 Scaled.FulxTower_new.data_draw<-apply(Drought_04De_new.data_BS[,1:12],2, scale)
-Drought_04De_new.data_BS <- as.data.frame( cbind(Scaled.FulxTower_new.data_draw,Drought_04De_new.data_BS[,15:24]))
+Drought_04De_new.data_BS <- as.data.frame( cbind(Scaled.FulxTower_new.data_draw,Drought_04De_new.data_BS[,15:22]))
 #threshold_scale=10
 #Drought_04De_new.data_BS <- Drought_04De_new.data_BS[which(abs(Drought_04De_new.data_BS$EVI_anomaly) <= 10 &    abs(Drought_04De_new.data_BS$PAR_anomaly)<= threshold_scale &  abs(Drought_04De_new.data_BS$VPD_anomaly)<= threshold_scale & abs(Drought_04De_new.data_BS$Pre_anomaly)<= threshold_scale &
                                                                          #abs(Drought_04De_new.data_BS$MCWD_anomaly)<= threshold_scale &  abs(Drought_04De_new.data_BS$SoilFertility)<= threshold_scale & abs(Drought_04De_new.data_BS$Drought_Length)<= threshold_scale &  abs(Drought_04De_new.data_BS$DrySeasonLength)<= threshold_scale & abs(Drought_04De_new.data_BS$WTD)<= threshold_scale & abs(Drought_04De_new.data_BS$TreeHeight)<= threshold_scale) ,]
@@ -481,7 +481,7 @@ Model_fit_array<-Model_Seg_Prediction(Drought_04De_new.data_ha_mean,mod.IA_Guian
 Drought_04De_new.data_ha_mean$EVI_anomaly_fit_21=Model_fit_array$.value
 #Calculate prediction 
 Drought_04De_new.data_ha<-add_fitted(Drought_04De_new.data_ha,mod.IA_Guiana)
-colnames(Drought_04De_new.data_ha)[25] = 'EVI_anomaly_fit'
+colnames(Drought_04De_new.data_ha)[23] = 'EVI_anomaly_fit'
 #corrected EVI anomaly in Guyana shield
 Model_correct_array<-Model_Seg_Correction(Drought_04De_new.data_ha, Drought_04De_new.data_ha_mean, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_09', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=9)
 arr_ob_Guyana<-summary_group_full(Model_correct_array,x0.var='EVI_anomaly', x1.var='EVI_anomaly_corrected', flag=1)

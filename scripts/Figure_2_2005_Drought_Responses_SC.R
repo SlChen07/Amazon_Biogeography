@@ -135,11 +135,12 @@ BY_increase=100000#
 group_number=14
 cbPalette1 <- c( "#FEE08B" ) #"#D53E4F",  "#F46D43", "#FDAE61", "#FEE08B", 
 # choose either 'Modest Drought', 'Medium Drought', 'Severe Drought'
-Fig2_PanelCDistribution<-Draw_Fig2_PanelCDistribution(Drought_ad.data_2005,DroughtSeverity = 'Modest Drought',
+Fig2_PanelCDistribution<-Draw_Fig2_PanelCDistribution(Drought_ad.data_2005,DroughtSeverity = 'Medium Drought',
                                                       x0.var = 'PAR_anomaly',x1.var = 'Drought_Condition',
                                                       rangeMin,rangeMax,BY_increase,group_number,cbPalette1)
   
 Fig2_PanelCDistribution
+
 ##---------------------------------------------------------------------------------------------------------------
 
 

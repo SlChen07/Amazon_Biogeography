@@ -45,21 +45,21 @@ Drought_04De_ad.data<-Drought_04De.data[which(Drought_04De.data$SegGeo_number >=
 Drought_04De_ad_new2.data<-Drought_04De_ad.data[which(is.finite(Drought_04De_ad.data$EVI_anomaly) & is.finite(Drought_04De_ad.data$PAR_anomaly)
                                                       & is.finite(Drought_04De_ad.data$VPD_anomaly) &  (Drought_04De_ad.data$EVI_anomaly != 0)  
                                                       & is.finite(Drought_04De_ad.data$MCWD_anomaly) & is.finite(Drought_04De_ad.data$Pre_anomaly) 
-                                                      &  is.finite(Drought_04De_ad.data$SoilFertility)  & Drought_04De_ad.data$SegGeo_number ==seg_target 
+                                                      & Drought_04De_ad.data$SegGeo_number ==seg_target 
                                                       & Drought_04De_ad.data$WTD <=60 ),] # 
 
 
-Drought_04De_ad_new1.data<-data.frame(Drought_04De_ad_new2.data$PAR_anomaly,Drought_04De_ad_new2.data$VPD_anomaly,+
-                                       Drought_04De_ad_new2.data$Pre_anomaly,Drought_04De_ad_new2.data$MCWD_anomaly, +
-                                       Drought_04De_ad_new2.data$SoilFertility,Drought_04De_ad_new2.data$SoilClay_content, +
-                                        Drought_04De_ad_new2.data$WTD,Drought_04De_ad_new2.data$Tree_Height,+
-                                       Drought_04De_ad_new2.data$Drought_Length,Drought_04De_ad_new2.data$MCWD_STD,+
-                                       Drought_04De_ad_new2.data$WTD, Drought_04De_ad_new2.data$EVI_anomaly, Drought_04De_ad_new2.data$year,+
+Drought_04De_ad_new1.data<-data.frame(Drought_04De_ad_new2.data$PAR_anomaly,Drought_04De_ad_new2.data$VPD_anomaly,
+                                       Drought_04De_ad_new2.data$Pre_anomaly,Drought_04De_ad_new2.data$MCWD_anomaly,
+                                       #Drought_04De_ad_new2.data$SoilFertility,Drought_04De_ad_new2.data$SoilClay_content,
+                                        Drought_04De_ad_new2.data$WTD,#Drought_04De_ad_new2.data$Tree_Height,
+                                       Drought_04De_ad_new2.data$Drought_Length,#Drought_04De_ad_new2.data$MCWD_STD,
+                                       Drought_04De_ad_new2.data$WTD, Drought_04De_ad_new2.data$EVI_anomaly, Drought_04De_ad_new2.data$year,
                                        Drought_04De_ad_new2.data$SegGeo_number,Drought_04De_ad_new2.data$HAND_CLASS)#
 
 names(Drought_04De_ad_new1.data)<-c('PAR_anomaly','VPD_anomaly','Pre_anomaly','MCWD_anomaly',  
-                                   'SoilFertility','SoilClay_content','HAND',   
-                                   'TreeHeight','Drought_Length','MCWD_STD', 'WTD',
+                                   #'SoilFertility','SoilClay_content',
+                                   'HAND','Drought_Length', 'WTD',
                                    'EVI_anomaly','year','SegGeo_number','HAND_CLASS')
 summary(Drought_04De_ad_new1.data)
 
@@ -71,8 +71,8 @@ Drought_04De_ad_new.data2<-Drought_04De_ad_new1.data  #before scaling
 Drought_04De_ad_new.data_before_scaling<-Drought_04De_ad_new1.data 
 
 #--Scale the data---------------------------
-Scaled.Drought_04De_ad_new1.data<-apply(Drought_04De_ad_new1.data[,1:10],2, scale)
-Drought_04De_ad_new.data <- as.data.frame( cbind(Scaled.Drought_04De_ad_new1.data,Drought_04De_ad_new1.data[,11:15]))
+Scaled.Drought_04De_ad_new1.data<-apply(Drought_04De_ad_new1.data[,1:6],2, scale)
+Drought_04De_ad_new.data <- as.data.frame( cbind(Scaled.Drought_04De_ad_new1.data,Drought_04De_ad_new1.data[,7:11]))
 
 #threshold_scale=10
 #Drought_04De_ad_new.data <- Drought_04De_ad_new.data[which(abs(Drought_04De_ad_new.data$EVI_anomaly) <= 20 &   
@@ -124,11 +124,11 @@ Drought_04De_ad_new.data_ha_mean<-set_value_byyear(Drought_04De_ad_new.data_ha_m
                                                    x4.var='Pre_anomaly',x5.var='Drought_Length',drought_year='2015',moment=mean)
 #calculate the prediction according to mean climate of each drought
 Drought_04De_ad_new.data_ha_mean<-add_fitted(Drought_04De_ad_new.data_ha_mean,Ancova_model.lm.slope_model_climate)
-colnames(Drought_04De_ad_new.data_ha_mean)[16] = 'EVI_anomaly_fit_mean'#'EVI_anomaly_fit_mean_DL' 
+colnames(Drought_04De_ad_new.data_ha_mean)[12] = 'EVI_anomaly_fit_mean'#'EVI_anomaly_fit_mean_DL' 
 
 #calculate the prediction 
 Drought_04De_ad_new.data_ha<-add_fitted(Drought_04De_ad_new.data_ha,Ancova_model.lm.slope_model_climate)
-colnames(Drought_04De_ad_new.data_ha)[16] = 'EVI_anomaly_fit'
+colnames(Drought_04De_ad_new.data_ha)[12] = 'EVI_anomaly_fit'
 #corrected EVI anomaly for 2005 drought
 Drought_04De_ad_new.data_ha_2005<-Drought_EVI_correction(Drought_04De_ad_new.data_ha,Drought_04De_ad_new.data_ha_mean,
                                                          x0.var='year',x1.var='EVI_anomaly',x2.var='HAND_CLASS',data1.var='EVI_anomaly_fit',
