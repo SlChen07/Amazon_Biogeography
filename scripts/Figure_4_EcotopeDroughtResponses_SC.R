@@ -34,8 +34,431 @@ file_path="data/"
 file_name=paste('ThreeDroughts_EVI_Ecotope_Climate_04De','.csv',sep='')
 file_ful_path=paste(file_path,"/",file_name,sep='')
 Drought_04De.data<- read.csv(file=file_ful_path,header=T) 
+############################################################################################################
+# Functions to run:
+#Function for Figure 4 Panel A & C
+Model_2D_Partial_Prediction<- function( data,model,x0.var = 'WTD', x1.var = 'TreeHeight', x3.smooth='smooth',y.smooth='est', x0.smooth='s(WTD)',x1.smooth='s(TreeHeight)',x2.smooth='ti(WTD,TreeHeight)', moment = mean) {
+  
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  
+  
+  sm_ml <- as.data.frame(smooth_estimates(model, dist = 0.1))
+  print(1)
+  sm_ml.tmp<-sm_ml
+  ix0_sm <- match(x0.var, names(sm_ml))
+  
+  ix1_sm<- match(x1.var, names(sm_ml))
+  ix0.smooth_sm<- match(x0.smooth, names(sm_ml))
+  ix1.smooth_sm<- match(x1.smooth, names(sm_ml))
+  ix2.smooth_sm<- match(x2.smooth, names(sm_ml))
+  ix3.smooth_sm<- match(x3.smooth, names(sm_ml))
+  y.smooth_sm<- match(y.smooth, names(sm_ml))
+  
+  sm_ml.tmp[,ix0_sm]<- sm_ml[,ix0_sm]*sd(data[,ix0])+mean(data[,ix0])
+  sm_ml.tmp[,ix1_sm]<- sm_ml[,ix1_sm]*sd(data[,ix1])+mean(data[,ix1])
+  print(sd(data[,ix0]))
+  print(mean(data[,ix1]))
+  sm_ml.copy<-sm_ml.tmp
+  x1_arr<-sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x1.smooth,ix1_sm]
+  #print(x1_arr)
+  for (TH_val in x1_arr){
+    sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm]<- sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm]+  sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x1.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm] 
+  }  
+  
+  x0_arr<-sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x0.smooth,ix0_sm]
+  for (WTD_val in x0_arr){
+    sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm]<- sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm]+  sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x0.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm] 
+  }
+  
+  return(sm_ml.copy)
+}
 
 
+#draw 2D figure
+Draw_Fig_2D <- function(data,x0.var = 'WTD', x1.var = 'TreeHeight',y.var='est',x0.range=c(0,40),x0.break=seq(0,40,  by=10),x1.range=c(20,40),x1.break=seq(21,39,  by=1.5),threshold_value=0.4,c_break=c(-0.2,-0.1,0,0.1,0.2))
+{
+  p_draw<- ggplot(data, aes_string(x =x0.var, y =x1.var)) +
+    geom_raster(aes_string(fill = (y.var))) +
+    geom_contour(aes_string(z = (y.var)), colour = "black",linetype="dashed") +
+    scale_fill_gradientn(limits = c((-1)*threshold_value,threshold_value),
+                         
+                         colors = brewer.pal(10,"RdYlGn")[3:9],
+                         breaks=(as.numeric(c_break)), labels=format(c_break))+ 
+    scale_x_continuous(limits =as.numeric(x0.range))+
+    scale_y_continuous(limits =as.numeric(x1.range),breaks=as.numeric(x1.break)) + theme_few() %+replace%
+    theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                          size =1.0))+
+    theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
+    theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
+    theme(axis.title=element_text(size=18))+ #,face="bold"
+    theme(plot.title=element_text(size=18,face="bold"))
+  
+  return(p_draw)  
+}
+
+
+Data_threshold<-function(data,y.var='est',threshold_value=0.4)
+{
+  iy <- match(y.var, names(data))
+  
+  data[data[, iy]>=threshold_value & !is.na(data[, iy]),iy]<-threshold_value
+  data[data[, iy]<=(-1)*threshold_value & !is.na(data[, iy]),iy]<-(-1)*threshold_value
+  data[data[, iy]>=threshold_value & !is.na(data[, iy]),iy]<-threshold_value
+  data[data[, iy]<=(-1)*threshold_value & !is.na(data[, iy]),iy]<-(-1)*threshold_value
+  
+  return(data)
+}
+
+
+#functions for figure 4 Panel C & D
+Model_Seg_Prediction_Region_SoilFertility<- function( data, model,WTD_Array, x0.ori = 'WTD_ori',  x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', SF.value=0, moment = mean) {
+  
+  ix0.ori <- match(x0.ori, names(data))
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  ix2<- match(x2.var, names(data))
+  ix3<- match(x3.var, names(data))
+  ix4<- match(x4.var, names(data))
+  
+  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
+  ix1.other<- match(x1.other, names(data))
+  ix2.other<- match(x2.other, names(data))
+  ix3.other<- match(x3.other, names(data))
+  ix4.other<- match(x4.other, names(data))
+  
+  iy <- match(y.var, names(data))
+  
+  
+  x1.level <- SF.value #moment(data[data[,ix4.other]== Seg,ix1])
+  x2.level <- moment(data[,ix2])
+  x3.level <- moment(data[,ix3])
+  x4.level <- moment(data[,ix4])
+  print(x1.level)
+  print(x2.level)
+  print(x3.level)
+  print(x4.level)
+  
+  x0.other.level <- moment(data[,ix0.other]) 
+  x1.other.level <- moment(data[,ix1.other]) 
+  x2.other.level <- moment(data[,ix2.other]) 
+  x3.other.level <- moment(data[,ix3.other]) 
+  print(x0.other.level)
+  print(x1.other.level)
+  print(x2.other.level)
+  print(x3.other.level)
+  # set the hidden (other) variable 
+  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
+  row_lnth<-nrow(WTD_arr)
+  x <- "Welcome to Programiz"
+  print(row_lnth)
+  
+  new <- data.frame( WTD_arr,rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
+                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
+                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
+                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
+  
+  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
+  
+  #new_fit_array<-add_fitted(new,model)
+  prediction_wtd00<-predict(model,new,se.fit = TRUE)
+  #print(prediction_wtd00)
+  
+  prediction.lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
+  #print(prediction.lci)
+  prediction.fit <- prediction_wtd00$fit
+  prediction.uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
+  
+  WTD_reverse=(new[,1]*sd(data[,ix0.ori]))+mean(data[,ix0.ori])
+  
+  new_fit_array<-as.data.frame(cbind(new,prediction.lci,prediction.fit,prediction.uci,WTD_reverse))
+  names(new_fit_array) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other,'lci','fit','uci','WTD_reverse' ) 
+  
+  return(new_fit_array)
+}
+
+
+
+Model_Seg_Prediction_Region_TreeHeight<- function( data, model,WTD_Array, x0.ori = 'WTD_ori',  x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', TH.value=0, moment = mean) {
+  
+  ix0.ori <- match(x0.ori, names(data))
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  ix2<- match(x2.var, names(data))
+  ix3<- match(x3.var, names(data))
+  ix4<- match(x4.var, names(data))
+  
+  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
+  ix1.other<- match(x1.other, names(data))
+  ix2.other<- match(x2.other, names(data))
+  ix3.other<- match(x3.other, names(data))
+  ix4.other<- match(x4.other, names(data))
+  
+  iy <- match(y.var, names(data))
+  
+  x1.level <- moment(data[,ix1])
+  x2.level <- moment(data[,ix2])
+  x3.level <- TH.value#moment(data[,ix3])
+  x4.level <- moment(data[,ix4])
+  print(x1.level)
+  print(x2.level)
+  print(x3.level)
+  print(x4.level)
+  
+  x0.other.level <- moment(data[,ix0.other]) 
+  x1.other.level <- moment(data[,ix1.other]) 
+  x2.other.level <- moment(data[,ix2.other]) 
+  x3.other.level <- moment(data[,ix3.other]) 
+  print(x0.other.level)
+  print(x1.other.level)
+  print(x2.other.level)
+  print(x3.other.level)
+  # set the hidden (other) variable 
+  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
+  row_lnth<-nrow(WTD_arr)
+  x <- "Welcome to Programiz"
+  print(row_lnth)
+  
+  new <- data.frame( WTD_arr,rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
+                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
+                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
+                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
+  
+  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
+  
+  #new_fit_array<-add_fitted(new,model)
+  prediction_wtd00<-predict(model,new,se.fit = TRUE)
+  #print(prediction_wtd00)
+  
+  prediction.lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
+  #print(prediction.lci)
+  prediction.fit <- prediction_wtd00$fit
+  prediction.uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
+  
+  WTD_reverse=(new[,1]*sd(data[,ix0.ori]))+mean(data[,ix0.ori])
+  
+  new_fit_array<-as.data.frame(cbind(new,prediction.lci,prediction.fit,prediction.uci,WTD_reverse))
+  names(new_fit_array) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other,'lci','fit','uci','WTD_reverse' ) 
+  
+  return(new_fit_array)
+}
+
+
+#functions for panel E
+summary_group_full<-function(data,x0.var='EVI_anomaly',x1.var='EVI_anomaly_corrected', flag=1) # if using EVI_anomaly_corrected, flag=1 
+{
+  Summary_Geo=summary_group_simple(data,flag)
+  Summary_Geo<-Summary_Geo[which(Summary_Geo$N >=4 & Summary_Geo$HAND_CLASS <=40  & Summary_Geo$HAND_CLASS >=2),]
+  Summary_Geo<-data.frame(Summary_Geo$HAND_CLASS,Summary_Geo$EVI_anomaly_corrected,Summary_Geo$ci,Summary_Geo$se)
+  names(Summary_Geo) <- c('HAND_CLASS',x0.var,'ci','se')  # Brando_summary_Geo$ci <=1.5 ),]
+  return(Summary_Geo)
+}
+
+summary_group_simple<-function(Input_model.data, group_flag){
+  if (group_flag ==1) {
+    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly_corrected", groupvars=c("HAND_CLASS"))   #"Residual_R"
+  } else{ if (group_flag ==0) {
+    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly", groupvars=c("HAND_CLASS")) 
+  }else {
+    Residual_summary <- summarySE(Input_model.data, measurevar="Prediction", groupvars=c("HAND_CLASS")) 
+  }
+  }
+  return(Residual_summary)
+}
+
+merge_figures_sameunits<-function(base_plt,over_plt){
+  
+  plot_theme <- function(p) {
+    plyr::defaults(p$theme, theme_get())
+  }
+  
+  base_g = ggplot_gtable(ggplot_build(base_plt))
+  overlay_g = ggplot_gtable(ggplot_build(over_plt))
+  
+  plt_panel = c(subset(base_g$layout, name == "panel", se = t:r))
+  pnl_ind = which(overlay_g$layout$name == "panel")
+  leg_ind = which(overlay_g$layout$name == "guide-box") 
+  final_grob = gtable_add_grob(base_g,
+                               overlay_g$grobs[[pnl_ind]],
+                               plt_panel$t,
+                               plt_panel$l,
+                               plt_panel$b,
+                               plt_panel$r, name = "a")
+  
+  #final_grob = gtable_add_grob(final_grob,
+  #overlay_g$grobs[[leg_ind]])
+  #plt_panel$t,
+  #plt_panel$l,
+  #plt_panel$b,
+  #plt_panel$r, name = "b") #
+  return(final_grob)
+  
+}
+
+
+Model_Seg_Prediction<- function( data, model, x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', Seg=12, moment = mean) {
+  
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  ix2<- match(x2.var, names(data))
+  ix3<- match(x3.var, names(data))
+  ix4<- match(x4.var, names(data))
+  
+  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
+  ix1.other<- match(x1.other, names(data))
+  ix2.other<- match(x2.other, names(data))
+  ix3.other<- match(x3.other, names(data))
+  ix4.other<- match(x4.other, names(data))
+  
+  iy <- match(y.var, names(data))
+  
+  x1.level <- moment(data[data[,ix4.other]== Seg,ix1])
+  x2.level <- moment(data[data[,ix4.other] == Seg,ix2])
+  x3.level <- moment(data[data[,ix4.other] == Seg,ix3])
+  x4.level <- moment(data[data[,ix4.other]== Seg,ix4])
+  print(x1.level)
+  print(x2.level)
+  print(x3.level)
+  print(x4.level)
+  
+  x0.other.level <- moment(data[data[,ix4.other] == Seg,ix0.other]) 
+  x1.other.level <- moment(data[data[,ix4.other] == Seg,ix1.other]) 
+  x2.other.level <- moment(data[data[,ix4.other] == Seg,ix2.other]) 
+  x3.other.level <- moment(data[data[,ix4.other] == Seg,ix3.other]) 
+  print(x0.other.level)
+  print(x1.other.level)
+  print(x2.other.level)
+  print(x3.other.level)
+  # set the hidden (other) variable 
+  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
+  row_lnth<-nrow(data)
+  x <- "Welcome to Programiz"
+  print(row_lnth)
+  
+  new <- data.frame( data[,ix0],rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
+                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
+                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
+                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
+  
+  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
+  
+  new_fit_array<-add_fitted(new,model)
+  return(new_fit_array)
+}
+
+
+Model_Seg_Correction<- function( data1, data2, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_12', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=12) {
+  
+  ix0<- match(x0.var, names(data1))
+  ix1<- match(x1.var, names(data1))
+  ix4.other1<- match(x4.other, names(data1)) # get index to x-var name 
+  ix4.other2<- match(x4.other, names(data2))
+  
+  iy <- match(y.var, names(data1))
+  iy.other0 <- match(y0.other, names(data1))
+  iy.other1 <- match(y1.other, names(data2))
+  
+  
+  data1_sub<-data1[data1[,ix4.other1]== Seg,]
+  data2_sub<-data2[data2[,ix4.other2]== Seg,]
+  
+  correction_vector<-data1_sub[,iy.other0]-data2_sub[,iy.other1]
+  y_correction<-data1_sub[,iy]-correction_vector[,1]
+  
+  
+  new <- data.frame( y_correction, correction_vector, data1_sub[,iy], data1_sub[,iy.other0],data2_sub[,iy.other1],data1_sub[,ix0],data1_sub[,ix1])
+  row_lnth<-ncol(new)
+  print(row_lnth)
+  names(new) <- c('EVI_anomaly_corrected','correction',y.var,y0.other,y1.other ,x0.var,x1.var)  
+  return(new)
+}
+
+
+Model_Seg_Prediction_Region<- function( data, model,WTD_Array, x0.ori = 'WTD_ori',  x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', Seg=12, moment = mean) {
+  
+  ix0.ori <- match(x0.ori, names(data))
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  ix2<- match(x2.var, names(data))
+  ix3<- match(x3.var, names(data))
+  ix4<- match(x4.var, names(data))
+  
+  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
+  ix1.other<- match(x1.other, names(data))
+  ix2.other<- match(x2.other, names(data))
+  ix3.other<- match(x3.other, names(data))
+  ix4.other<- match(x4.other, names(data))
+  
+  iy <- match(y.var, names(data))
+  
+  
+  x1.level <- moment(data[data[,ix4.other]== Seg,ix1])
+  x2.level <- moment(data[data[,ix4.other] == Seg,ix2])
+  x3.level <- moment(data[data[,ix4.other] == Seg,ix3])
+  x4.level <- moment(data[data[,ix4.other]== Seg,ix4])
+  print(x1.level)
+  print(x2.level)
+  print(x3.level)
+  print(x4.level)
+  
+  x0.other.level <- moment(data[data[,ix4.other] == Seg,ix0.other]) 
+  x1.other.level <- moment(data[data[,ix4.other] == Seg,ix1.other]) 
+  x2.other.level <- moment(data[data[,ix4.other] == Seg,ix2.other]) 
+  x3.other.level <- moment(data[data[,ix4.other] == Seg,ix3.other]) 
+  print(x0.other.level)
+  print(x1.other.level)
+  print(x2.other.level)
+  print(x3.other.level)
+  # set the hidden (other) variable 
+  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
+  row_lnth<-nrow(WTD_arr)
+  x <- "Welcome to Programiz"
+  print(row_lnth)
+  
+  new <- data.frame( WTD_arr,rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
+                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
+                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
+                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
+  
+  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
+  
+  #new_fit_array<-add_fitted(new,model)
+  prediction_wtd00<-predict(model,new,se.fit = TRUE)
+  print(prediction_wtd00)
+  
+  prediction.lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
+  #print(prediction.lci)
+  prediction.fit <- prediction_wtd00$fit
+  prediction.uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
+  
+  WTD_reverse=(new[,1]*sd(data[,ix0.ori]))+mean(data[,ix0.ori])
+  
+  new_fit_array<-as.data.frame(cbind(new,prediction.lci,prediction.fit,prediction.uci,WTD_reverse))
+  names(new_fit_array) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other,'lci','fit','uci','WTD_reverse' ) 
+  
+  return(new_fit_array)
+}
+
+
+#establish a predictive selected GAM
+ancova_establish_slope_Guiana_04Degree_SoilSand<- function(Input_model.data){
+  names(Input_model.data)
+  
+  mod.IA<-mgcv::bam(EVI_anomaly ~   s(WTD,k=5) +s(TreeHeight)+ti(WTD,TreeHeight,k=c(3,4))
+                    +s(SoilSand_content,k=5)+ti(WTD,SoilSand_content, k = c(3, 4)) 
+                    +s(SoilFertility,k=5)+ti(WTD,SoilFertility,k=c(3,3))
+                    +ti(SoilFertility,SoilSand_content,k=c(3,4))
+                    +s(DrySeasonLength)+ti(WTD,DrySeasonLength,k=c(3,4)) 
+                    +ti(WTD, PAR_anomaly,bs='tp') +ti(WTD,VPD_anomaly,bs='tp')  
+                    +ti(WTD,MCWD_anomaly,bs='tp')+ti(WTD,Pre_anomaly,bs='tp')
+                    +s(PAR_anomaly)+s(MCWD_anomaly)+ti(PAR_anomaly,MCWD_anomaly,bs='tp')
+                    +ti(MCWD_anomaly,VPD_anomaly,bs='tp')+ti(VPD_anomaly,PAR_anomaly,bs='tp')
+                    +ti(PAR_anomaly,Pre_anomaly,bs='tp')+ti(MCWD_anomaly,Pre_anomaly,bs='tp'),method = "REML", data = Input_model.data)  # good for Fig4 this is final version
+  
+  return(mod.IA) 
+}
+############################################################################################################
+############################################################################################################
 ####-------------------------------------------main code for Figure 4-------------------------------------------
 ##----------------------------------Panel A 2D-interactions among ecotope factors-------------------------------
 options(digits=7) 
@@ -578,425 +1001,5 @@ grid.draw(Figure4_PanelE)
 
 
 #-----------------------------------------------------functions-------------------------------------------------
-#Function for Figure 4 Panel A & C
-Model_2D_Partial_Prediction<- function( data,model,x0.var = 'WTD', x1.var = 'TreeHeight', x3.smooth='smooth',y.smooth='est', x0.smooth='s(WTD)',x1.smooth='s(TreeHeight)',x2.smooth='ti(WTD,TreeHeight)', moment = mean) {
-  
-  ix0 <- match(x0.var, names(data))
-  ix1<- match(x1.var, names(data))
-  
-  
-  sm_ml <- as.data.frame(smooth_estimates(model, dist = 0.1))
-  print(1)
-  sm_ml.tmp<-sm_ml
-  ix0_sm <- match(x0.var, names(sm_ml))
-  
-  ix1_sm<- match(x1.var, names(sm_ml))
-  ix0.smooth_sm<- match(x0.smooth, names(sm_ml))
-  ix1.smooth_sm<- match(x1.smooth, names(sm_ml))
-  ix2.smooth_sm<- match(x2.smooth, names(sm_ml))
-  ix3.smooth_sm<- match(x3.smooth, names(sm_ml))
-  y.smooth_sm<- match(y.smooth, names(sm_ml))
-  
-  sm_ml.tmp[,ix0_sm]<- sm_ml[,ix0_sm]*sd(data[,ix0])+mean(data[,ix0])
-  sm_ml.tmp[,ix1_sm]<- sm_ml[,ix1_sm]*sd(data[,ix1])+mean(data[,ix1])
-  print(sd(data[,ix0]))
-  print(mean(data[,ix1]))
-  sm_ml.copy<-sm_ml.tmp
-  x1_arr<-sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x1.smooth,ix1_sm]
-  #print(x1_arr)
-  for (TH_val in x1_arr){
-    sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm]<- sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm]+  sm_ml.copy[(sm_ml.copy[,ix3.smooth_sm] == x1.smooth & sm_ml.copy[,ix1_sm] == TH_val), y.smooth_sm] 
-  }  
-  
-  x0_arr<-sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x0.smooth,ix0_sm]
-  for (WTD_val in x0_arr){
-    sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm]<- sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x2.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm]+  sm_ml.copy[sm_ml.copy[,ix3.smooth_sm] == x0.smooth & sm_ml.copy[,ix0_sm] == WTD_val, y.smooth_sm] 
-  }
-  
-  return(sm_ml.copy)
-}
 
-
-#draw 2D figure
-Draw_Fig_2D <- function(data,x0.var = 'WTD', x1.var = 'TreeHeight',y.var='est',x0.range=c(0,40),x0.break=seq(0,40,  by=10),x1.range=c(20,40),x1.break=seq(21,39,  by=1.5),threshold_value=0.4,c_break=c(-0.2,-0.1,0,0.1,0.2))
-{
-  p_draw<- ggplot(data, aes_string(x =x0.var, y =x1.var)) +
-    geom_raster(aes_string(fill = (y.var))) +
-    geom_contour(aes_string(z = (y.var)), colour = "black",linetype="dashed") +
-    scale_fill_gradientn(limits = c((-1)*threshold_value,threshold_value),
-                         
-                         colors = brewer.pal(10,"RdYlGn")[3:9],
-                         breaks=(as.numeric(c_break)), labels=format(c_break))+ 
-    scale_x_continuous(limits =as.numeric(x0.range))+
-    scale_y_continuous(limits =as.numeric(x1.range),breaks=as.numeric(x1.break)) + theme_few() %+replace%
-    theme(panel.background = element_rect(fill = NA,colour = "black", 
-                                          size =1.0))+
-    theme(axis.text.x = element_text( color="Black", size=18))+  #,face="bold")
-    theme(axis.text.y = element_text( color="Black", size=18))+  #,face="bold"
-    theme(axis.title=element_text(size=18))+ #,face="bold"
-    theme(plot.title=element_text(size=18,face="bold"))
-  
-  return(p_draw)  
-}
-
-
-Data_threshold<-function(data,y.var='est',threshold_value=0.4)
-{
-  iy <- match(y.var, names(data))
-  
-  data[data[, iy]>=threshold_value & !is.na(data[, iy]),iy]<-threshold_value
-  data[data[, iy]<=(-1)*threshold_value & !is.na(data[, iy]),iy]<-(-1)*threshold_value
-  data[data[, iy]>=threshold_value & !is.na(data[, iy]),iy]<-threshold_value
-  data[data[, iy]<=(-1)*threshold_value & !is.na(data[, iy]),iy]<-(-1)*threshold_value
-  
-  return(data)
-}
-
-
-#functions for figure 4 Panel C & D
-Model_Seg_Prediction_Region_SoilFertility<- function( data, model,WTD_Array, x0.ori = 'WTD_ori',  x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', SF.value=0, moment = mean) {
-  
-  ix0.ori <- match(x0.ori, names(data))
-  ix0 <- match(x0.var, names(data))
-  ix1<- match(x1.var, names(data))
-  ix2<- match(x2.var, names(data))
-  ix3<- match(x3.var, names(data))
-  ix4<- match(x4.var, names(data))
-  
-  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
-  ix1.other<- match(x1.other, names(data))
-  ix2.other<- match(x2.other, names(data))
-  ix3.other<- match(x3.other, names(data))
-  ix4.other<- match(x4.other, names(data))
-  
-  iy <- match(y.var, names(data))
-  
-  
-  x1.level <- SF.value #moment(data[data[,ix4.other]== Seg,ix1])
-  x2.level <- moment(data[,ix2])
-  x3.level <- moment(data[,ix3])
-  x4.level <- moment(data[,ix4])
-  print(x1.level)
-  print(x2.level)
-  print(x3.level)
-  print(x4.level)
-  
-  x0.other.level <- moment(data[,ix0.other]) 
-  x1.other.level <- moment(data[,ix1.other]) 
-  x2.other.level <- moment(data[,ix2.other]) 
-  x3.other.level <- moment(data[,ix3.other]) 
-  print(x0.other.level)
-  print(x1.other.level)
-  print(x2.other.level)
-  print(x3.other.level)
-  # set the hidden (other) variable 
-  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
-  row_lnth<-nrow(WTD_arr)
-  x <- "Welcome to Programiz"
-  print(row_lnth)
-  
-  new <- data.frame( WTD_arr,rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
-                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
-                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
-                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
-  
-  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
-  
-  #new_fit_array<-add_fitted(new,model)
-  prediction_wtd00<-predict(model,new,se.fit = TRUE)
-  #print(prediction_wtd00)
-  
-  prediction.lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
-  #print(prediction.lci)
-  prediction.fit <- prediction_wtd00$fit
-  prediction.uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
-  
-  WTD_reverse=(new[,1]*sd(data[,ix0.ori]))+mean(data[,ix0.ori])
-  
-  new_fit_array<-as.data.frame(cbind(new,prediction.lci,prediction.fit,prediction.uci,WTD_reverse))
-  names(new_fit_array) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other,'lci','fit','uci','WTD_reverse' ) 
-  
-  return(new_fit_array)
-}
-
-
-
-Model_Seg_Prediction_Region_TreeHeight<- function( data, model,WTD_Array, x0.ori = 'WTD_ori',  x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', TH.value=0, moment = mean) {
-  
-  ix0.ori <- match(x0.ori, names(data))
-  ix0 <- match(x0.var, names(data))
-  ix1<- match(x1.var, names(data))
-  ix2<- match(x2.var, names(data))
-  ix3<- match(x3.var, names(data))
-  ix4<- match(x4.var, names(data))
-  
-  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
-  ix1.other<- match(x1.other, names(data))
-  ix2.other<- match(x2.other, names(data))
-  ix3.other<- match(x3.other, names(data))
-  ix4.other<- match(x4.other, names(data))
-  
-  iy <- match(y.var, names(data))
-
-  x1.level <- moment(data[,ix1])
-  x2.level <- moment(data[,ix2])
-  x3.level <- TH.value#moment(data[,ix3])
-  x4.level <- moment(data[,ix4])
-  print(x1.level)
-  print(x2.level)
-  print(x3.level)
-  print(x4.level)
-  
-  x0.other.level <- moment(data[,ix0.other]) 
-  x1.other.level <- moment(data[,ix1.other]) 
-  x2.other.level <- moment(data[,ix2.other]) 
-  x3.other.level <- moment(data[,ix3.other]) 
-  print(x0.other.level)
-  print(x1.other.level)
-  print(x2.other.level)
-  print(x3.other.level)
-  # set the hidden (other) variable 
-  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
-  row_lnth<-nrow(WTD_arr)
-  x <- "Welcome to Programiz"
-  print(row_lnth)
-  
-  new <- data.frame( WTD_arr,rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
-                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
-                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
-                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
-  
-  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
-  
-  #new_fit_array<-add_fitted(new,model)
-  prediction_wtd00<-predict(model,new,se.fit = TRUE)
-  #print(prediction_wtd00)
-  
-  prediction.lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
-  #print(prediction.lci)
-  prediction.fit <- prediction_wtd00$fit
-  prediction.uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
-  
-  WTD_reverse=(new[,1]*sd(data[,ix0.ori]))+mean(data[,ix0.ori])
-  
-  new_fit_array<-as.data.frame(cbind(new,prediction.lci,prediction.fit,prediction.uci,WTD_reverse))
-  names(new_fit_array) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other,'lci','fit','uci','WTD_reverse' ) 
-  
-  return(new_fit_array)
-}
-
-
-#functions for panel E
-summary_group_full<-function(data,x0.var='EVI_anomaly',x1.var='EVI_anomaly_corrected', flag=1) # if using EVI_anomaly_corrected, flag=1 
-{
-  Summary_Geo=summary_group_simple(data,flag)
-  Summary_Geo<-Summary_Geo[which(Summary_Geo$N >=4 & Summary_Geo$HAND_CLASS <=40  & Summary_Geo$HAND_CLASS >=2),]
-  Summary_Geo<-data.frame(Summary_Geo$HAND_CLASS,Summary_Geo$EVI_anomaly_corrected,Summary_Geo$ci,Summary_Geo$se)
-  names(Summary_Geo) <- c('HAND_CLASS',x0.var,'ci','se')  # Brando_summary_Geo$ci <=1.5 ),]
-  return(Summary_Geo)
-}
-
-summary_group_simple<-function(Input_model.data, group_flag){
-  if (group_flag ==1) {
-    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly_corrected", groupvars=c("HAND_CLASS"))   #"Residual_R"
-  } else{ if (group_flag ==0) {
-    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly", groupvars=c("HAND_CLASS")) 
-  }else {
-    Residual_summary <- summarySE(Input_model.data, measurevar="Prediction", groupvars=c("HAND_CLASS")) 
-  }
-  }
-  return(Residual_summary)
-}
-
-merge_figures_sameunits<-function(base_plt,over_plt){
-  
-  plot_theme <- function(p) {
-    plyr::defaults(p$theme, theme_get())
-  }
-  
-  base_g = ggplot_gtable(ggplot_build(base_plt))
-  overlay_g = ggplot_gtable(ggplot_build(over_plt))
-  
-  plt_panel = c(subset(base_g$layout, name == "panel", se = t:r))
-  pnl_ind = which(overlay_g$layout$name == "panel")
-  leg_ind = which(overlay_g$layout$name == "guide-box") 
-  final_grob = gtable_add_grob(base_g,
-                               overlay_g$grobs[[pnl_ind]],
-                               plt_panel$t,
-                               plt_panel$l,
-                               plt_panel$b,
-                               plt_panel$r, name = "a")
-  
-  #final_grob = gtable_add_grob(final_grob,
-  #overlay_g$grobs[[leg_ind]])
-  #plt_panel$t,
-  #plt_panel$l,
-  #plt_panel$b,
-  #plt_panel$r, name = "b") #
-  return(final_grob)
-  
-}
-
-
-Model_Seg_Prediction<- function( data, model, x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', Seg=12, moment = mean) {
-  
-  ix0 <- match(x0.var, names(data))
-  ix1<- match(x1.var, names(data))
-  ix2<- match(x2.var, names(data))
-  ix3<- match(x3.var, names(data))
-  ix4<- match(x4.var, names(data))
-  
-  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
-  ix1.other<- match(x1.other, names(data))
-  ix2.other<- match(x2.other, names(data))
-  ix3.other<- match(x3.other, names(data))
-  ix4.other<- match(x4.other, names(data))
-  
-  iy <- match(y.var, names(data))
-  
-  x1.level <- moment(data[data[,ix4.other]== Seg,ix1])
-  x2.level <- moment(data[data[,ix4.other] == Seg,ix2])
-  x3.level <- moment(data[data[,ix4.other] == Seg,ix3])
-  x4.level <- moment(data[data[,ix4.other]== Seg,ix4])
-  print(x1.level)
-  print(x2.level)
-  print(x3.level)
-  print(x4.level)
-  
-  x0.other.level <- moment(data[data[,ix4.other] == Seg,ix0.other]) 
-  x1.other.level <- moment(data[data[,ix4.other] == Seg,ix1.other]) 
-  x2.other.level <- moment(data[data[,ix4.other] == Seg,ix2.other]) 
-  x3.other.level <- moment(data[data[,ix4.other] == Seg,ix3.other]) 
-  print(x0.other.level)
-  print(x1.other.level)
-  print(x2.other.level)
-  print(x3.other.level)
-  # set the hidden (other) variable 
-  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
-  row_lnth<-nrow(data)
-  x <- "Welcome to Programiz"
-  print(row_lnth)
-  
-  new <- data.frame( data[,ix0],rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
-                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
-                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
-                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
-  
-  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
-  
-  new_fit_array<-add_fitted(new,model)
-  return(new_fit_array)
-}
-
-
-Model_Seg_Correction<- function( data1, data2, y.var ='EVI_anomaly', y0.other ='EVI_anomaly_fit',y1.other ='EVI_anomaly_fit_12', x0.var = 'WTD_ori', x1.var = 'HAND_CLASS', x4.other='SegGeo_number', Seg=12) {
-  
-  ix0<- match(x0.var, names(data1))
-  ix1<- match(x1.var, names(data1))
-  ix4.other1<- match(x4.other, names(data1)) # get index to x-var name 
-  ix4.other2<- match(x4.other, names(data2))
-  
-  iy <- match(y.var, names(data1))
-  iy.other0 <- match(y0.other, names(data1))
-  iy.other1 <- match(y1.other, names(data2))
-  
-  
-  data1_sub<-data1[data1[,ix4.other1]== Seg,]
-  data2_sub<-data2[data2[,ix4.other2]== Seg,]
-  
-  correction_vector<-data1_sub[,iy.other0]-data2_sub[,iy.other1]
-  y_correction<-data1_sub[,iy]-correction_vector[,1]
-  
-  
-  new <- data.frame( y_correction, correction_vector, data1_sub[,iy], data1_sub[,iy.other0],data2_sub[,iy.other1],data1_sub[,ix0],data1_sub[,ix1])
-  row_lnth<-ncol(new)
-  print(row_lnth)
-  names(new) <- c('EVI_anomaly_corrected','correction',y.var,y0.other,y1.other ,x0.var,x1.var)  
-  return(new)
-}
-
-
-Model_Seg_Prediction_Region<- function( data, model,WTD_Array, x0.ori = 'WTD_ori',  x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly', x4.other='SegGeo_number', Seg=12, moment = mean) {
-  
-  ix0.ori <- match(x0.ori, names(data))
-  ix0 <- match(x0.var, names(data))
-  ix1<- match(x1.var, names(data))
-  ix2<- match(x2.var, names(data))
-  ix3<- match(x3.var, names(data))
-  ix4<- match(x4.var, names(data))
-  
-  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
-  ix1.other<- match(x1.other, names(data))
-  ix2.other<- match(x2.other, names(data))
-  ix3.other<- match(x3.other, names(data))
-  ix4.other<- match(x4.other, names(data))
-  
-  iy <- match(y.var, names(data))
-  
-  
-  x1.level <- moment(data[data[,ix4.other]== Seg,ix1])
-  x2.level <- moment(data[data[,ix4.other] == Seg,ix2])
-  x3.level <- moment(data[data[,ix4.other] == Seg,ix3])
-  x4.level <- moment(data[data[,ix4.other]== Seg,ix4])
-  print(x1.level)
-  print(x2.level)
-  print(x3.level)
-  print(x4.level)
-  
-  x0.other.level <- moment(data[data[,ix4.other] == Seg,ix0.other]) 
-  x1.other.level <- moment(data[data[,ix4.other] == Seg,ix1.other]) 
-  x2.other.level <- moment(data[data[,ix4.other] == Seg,ix2.other]) 
-  x3.other.level <- moment(data[data[,ix4.other] == Seg,ix3.other]) 
-  print(x0.other.level)
-  print(x1.other.level)
-  print(x2.other.level)
-  print(x3.other.level)
-  # set the hidden (other) variable 
-  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
-  row_lnth<-nrow(WTD_arr)
-  x <- "Welcome to Programiz"
-  print(row_lnth)
-  
-  new <- data.frame( WTD_arr,rep(x1.level, row_lnth),rep(x2.level, row_lnth),+
-                       rep(x3.level,row_lnth),rep(x4.level,row_lnth),+
-                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
-                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
-  
-  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
-  
-  #new_fit_array<-add_fitted(new,model)
-  prediction_wtd00<-predict(model,new,se.fit = TRUE)
-  print(prediction_wtd00)
-  
-  prediction.lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
-  #print(prediction.lci)
-  prediction.fit <- prediction_wtd00$fit
-  prediction.uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
-  
-  WTD_reverse=(new[,1]*sd(data[,ix0.ori]))+mean(data[,ix0.ori])
-  
-  new_fit_array<-as.data.frame(cbind(new,prediction.lci,prediction.fit,prediction.uci,WTD_reverse))
-  names(new_fit_array) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other,'lci','fit','uci','WTD_reverse' ) 
-  
-  return(new_fit_array)
-}
-
-
-#establish a predictive selected GAM
-ancova_establish_slope_Guiana_04Degree_SoilSand<- function(Input_model.data){
-  names(Input_model.data)
-
-  mod.IA<-mgcv::bam(EVI_anomaly ~   s(WTD,k=5) +s(TreeHeight)+ti(WTD,TreeHeight,k=c(3,4))
-                    +s(SoilSand_content,k=5)+ti(WTD,SoilSand_content, k = c(3, 4)) 
-                    +s(SoilFertility,k=5)+ti(WTD,SoilFertility,k=c(3,3))
-                    +ti(SoilFertility,SoilSand_content,k=c(3,4))
-                    +s(DrySeasonLength)+ti(WTD,DrySeasonLength,k=c(3,4)) 
-                    +ti(WTD, PAR_anomaly,bs='tp') +ti(WTD,VPD_anomaly,bs='tp')  
-                    +ti(WTD,MCWD_anomaly,bs='tp')+ti(WTD,Pre_anomaly,bs='tp')
-                    +s(PAR_anomaly)+s(MCWD_anomaly)+ti(PAR_anomaly,MCWD_anomaly,bs='tp')
-                    +ti(MCWD_anomaly,VPD_anomaly,bs='tp')+ti(VPD_anomaly,PAR_anomaly,bs='tp')
-                    +ti(PAR_anomaly,Pre_anomaly,bs='tp')+ti(MCWD_anomaly,Pre_anomaly,bs='tp'),method = "REML", data = Input_model.data)  # good for Fig4 this is final version
- 
-  return(mod.IA) 
-}
 ##--------------------------------------------------------------------------------------------------------------

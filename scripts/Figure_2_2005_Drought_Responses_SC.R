@@ -32,8 +32,89 @@ Drought_year='2005'
 file_name=paste('Droughtof2005_EVI_Climate_WTD_simple','.csv',sep='')#_simple
 file_ful_path=paste(file_path,file_name,sep='')
 Drought.data_2005<- read.csv(file=file_ful_path,header=T) 
+############################################################################################################
+# Functions to run:
+summary_group_severity<-function(Input_model.data, group_flag){
+  
+  if (group_flag ==1) {
+    Residual_summary <- summarySE(Input_model.data, measurevar="Residual_R", groupvars=c("HAND_CLASS","Drought_Condition"))  
+  } else{ if (group_flag ==0) {
+    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly", groupvars=c("HAND_CLASS","Drought_Condition")) 
+  }else {
+    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_Prediction", groupvars=c("HAND_CLASS","Drought_Condition")) 
+  }
+  }
+  return(Residual_summary)
+}
+
+# function for  Figure 2 Panel B 
+ggplot_adjustment_withSeverity<-function(tgca,rangeMin,rangeMax,BY_increase,Drought_year,SWTD_MeanEVI,DWTD_MeanEVI){
+  
+  Title_name=paste("       ",Drought_year,"Drought")
+  
+  cbPalette <- c("#FED976", "#FE9929","#D94801","#F0F0F0", "#D9D9D9","#969696") 
+  
+  ggplot(tgca, aes(x=HAND_CLASS, y=EVI_anomaly, colour = factor(Drought_severity),group=factor(Drought_severity)))+ #, colour=Drought_Condition, group=Drought_Condition))+ , group=tgc1.type tgc1.Droughtlength
+    geom_errorbar(aes(ymin=EVI_anomaly-ci, ymax=EVI_anomaly+ci,colour = factor(Drought_severity),group=factor(Drought_severity)), size=0.5, width=.3,face="bold") +
+    geom_point( size=4.5, shape=23, aes(group=factor(Drought_severity),fill=factor(Drought_severity))) + # 21is filled circle , fill="white"
+    scale_fill_manual(values=c( "#FED976", "#FE9929","#D94801", "#F0F0F0","#D9D9D9", "#969696")) + 
+    geom_hline(yintercept = 0,  size=1, linetype="dashed") +
+    geom_hline(yintercept = SWTD_MeanEVI,  size=1, linetype="dashed", color="dark green") +
+    geom_hline(yintercept =DWTD_MeanEVI,  size=1, linetype="dashed",color="orange") +
+    
+    xlab("HAND (meter)") +
+    ylab("EVI anomaly   ") +
+    
+    scale_colour_manual(values=cbPalette)  +                     
+    ggtitle(Title_name) +
+    scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) +
+    scale_x_continuous(breaks=seq(0, 40,10))+
+    theme_few() %+replace% 
+    theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                          size =0.1)) +
+    theme(axis.text.x = element_text( color="Black", size=24))+  #,face="bold")
+    theme(axis.text.y = element_text( color="Black", size=24))+  #,face="bold"
+    theme(axis.title=element_text(size=24))+ #,face="bold"
+    theme(plot.title=element_text(size=24)) #face="bold"
+}
 
 
+# function for  Figure 2 Panel C Distributions 
+Draw_Fig2_PanelCDistribution<-function(Data,DroughtSeverity = 'Modest Drought',x0.var = 'PAR_anomaly',x1.var = 'Drought_Condition',rangeMin,rangeMax,BY_increase,group_number, cbPalette){
+  
+  ix0 <- match(x0.var, names(Data))
+  ix1 <- match(x1.var, names(Data)) 
+  print(ix0)
+  Data<-Data[which(is.finite(Data[,ix0]) & Data[,ix1]==DroughtSeverity),] # Severe Drought, Medium Drought,Modest Drought
+  
+  Data$PAR_class<-0
+  Par_class_start<-(-1.5)
+  group_interval=0.25
+  for (i in 1:group_number) {
+    if (i == 1) { Data[which(Data[,ix0]<=Par_class_start+(i-1)*group_interval),]$PAR_class=(Par_class_start+(i-1.5)*group_interval)}
+    else{ if (i== group_number ) {Data[which(Data[,ix0]>(Par_class_start+(i-2)*group_interval)),]$PAR_class=Par_class_start+(i-1.5)*group_interval}
+      else{Data[which(Data[,ix0]>(Par_class_start+(i-2)*group_interval) & Data[,ix0]<=(Par_class_start+(i-1)*group_interval) ),]$PAR_class=Par_class_start+(i-1.5)*group_interval}
+    }
+  }
+  
+  grid.newpage()
+  p_Distribution <- ggplot(data=Data, mapping=aes(x=PAR_class     ))+
+    geom_bar(stat="count",colour="#737373",fill = cbPalette[1], width=0.25,size=0.6, position =  position_dodge())+  #
+    scale_fill_manual(values =cbPalette[1] )+ #cbPalette[1]
+    scale_x_continuous(limits =c(-1.75,1.75), breaks=seq(-1.5,1.5,  by=0.50))+
+    scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) +    theme_few() %+replace% 
+    theme(panel.background = element_rect(fill = NA,colour = "black", 
+                                          size =1))+
+    ylab("Area (km2)") + 
+    xlab("PAR Anomaly") + 
+    theme(axis.text.x = element_text( color="Black", size=24))+  #,face="bold")
+    theme(axis.text.y = element_text( color="Black", size=24))+  #,face="bold"
+    theme(axis.title=element_text(size=24))+ #,face="bold"
+    theme(plot.title=element_text(size=24))
+  return(p_Distribution)
+}
+############################################################################################################
+############################################################################################################
 ####-------------------------------------------main code for Figure 2-------------------------------------------
 ##------------------------------------Panel B Original EVI Anomaly with Severity-------------------------------- 
 options(digits=7) 
@@ -146,93 +227,12 @@ for(i in seq(from=1, 3, by=1))
   #dev.off()
  
 }
-
-
 ##---------------------------------------------------------------------------------------------------------------
 
 
 
 
-
 ##------------------------Functions for figure 2-----------------------------------------------------------------
-summary_group_severity<-function(Input_model.data, group_flag){
- 
-  if (group_flag ==1) {
-    Residual_summary <- summarySE(Input_model.data, measurevar="Residual_R", groupvars=c("HAND_CLASS","Drought_Condition"))  
-  } else{ if (group_flag ==0) {
-    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly", groupvars=c("HAND_CLASS","Drought_Condition")) 
-  }else {
-    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_Prediction", groupvars=c("HAND_CLASS","Drought_Condition")) 
-  }
-  }
-  return(Residual_summary)
-}
 
-# function for  Figure 2 Panel B 
-ggplot_adjustment_withSeverity<-function(tgca,rangeMin,rangeMax,BY_increase,Drought_year,SWTD_MeanEVI,DWTD_MeanEVI){
-  
-  Title_name=paste("       ",Drought_year,"Drought")
-  
-    cbPalette <- c("#FED976", "#FE9929","#D94801","#F0F0F0", "#D9D9D9","#969696") 
-
-  ggplot(tgca, aes(x=HAND_CLASS, y=EVI_anomaly, colour = factor(Drought_severity),group=factor(Drought_severity)))+ #, colour=Drought_Condition, group=Drought_Condition))+ , group=tgc1.type tgc1.Droughtlength
-    geom_errorbar(aes(ymin=EVI_anomaly-ci, ymax=EVI_anomaly+ci,colour = factor(Drought_severity),group=factor(Drought_severity)), size=0.5, width=.3,face="bold") +
-    geom_point( size=4.5, shape=23, aes(group=factor(Drought_severity),fill=factor(Drought_severity))) + # 21is filled circle , fill="white"
-    scale_fill_manual(values=c( "#FED976", "#FE9929","#D94801", "#F0F0F0","#D9D9D9", "#969696")) + 
-    geom_hline(yintercept = 0,  size=1, linetype="dashed") +
-    geom_hline(yintercept = SWTD_MeanEVI,  size=1, linetype="dashed", color="dark green") +
-    geom_hline(yintercept =DWTD_MeanEVI,  size=1, linetype="dashed",color="orange") +
-    
-    xlab("HAND (meter)") +
-    ylab("EVI anomaly   ") +
-    
-    scale_colour_manual(values=cbPalette)  +                     
-    ggtitle(Title_name) +
-    scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) +
-    scale_x_continuous(breaks=seq(0, 40,10))+
-    theme_few() %+replace% 
-    theme(panel.background = element_rect(fill = NA,colour = "black", 
-                                          size =0.1)) +
-    theme(axis.text.x = element_text( color="Black", size=24))+  #,face="bold")
-    theme(axis.text.y = element_text( color="Black", size=24))+  #,face="bold"
-    theme(axis.title=element_text(size=24))+ #,face="bold"
-    theme(plot.title=element_text(size=24)) #face="bold"
-}
-
-
-# function for  Figure 2 Panel C Distributions 
-Draw_Fig2_PanelCDistribution<-function(Data,DroughtSeverity = 'Modest Drought',x0.var = 'PAR_anomaly',x1.var = 'Drought_Condition',rangeMin,rangeMax,BY_increase,group_number, cbPalette){
-  
-  ix0 <- match(x0.var, names(Data))
-  ix1 <- match(x1.var, names(Data)) 
-  print(ix0)
-  Data<-Data[which(is.finite(Data[,ix0]) & Data[,ix1]==DroughtSeverity),] # Severe Drought, Medium Drought,Modest Drought
-  
-  Data$PAR_class<-0
-  Par_class_start<-(-1.5)
-  group_interval=0.25
-  for (i in 1:group_number) {
-    if (i == 1) { Data[which(Data[,ix0]<=Par_class_start+(i-1)*group_interval),]$PAR_class=(Par_class_start+(i-1.5)*group_interval)}
-    else{ if (i== group_number ) {Data[which(Data[,ix0]>(Par_class_start+(i-2)*group_interval)),]$PAR_class=Par_class_start+(i-1.5)*group_interval}
-          else{Data[which(Data[,ix0]>(Par_class_start+(i-2)*group_interval) & Data[,ix0]<=(Par_class_start+(i-1)*group_interval) ),]$PAR_class=Par_class_start+(i-1.5)*group_interval}
-      }
-  }
-
-  grid.newpage()
-  p_Distribution <- ggplot(data=Data, mapping=aes(x=PAR_class     ))+
-    geom_bar(stat="count",colour="#737373",fill = cbPalette[1], width=0.25,size=0.6, position =  position_dodge())+  #
-    scale_fill_manual(values =cbPalette[1] )+ #cbPalette[1]
-    scale_x_continuous(limits =c(-1.75,1.75), breaks=seq(-1.5,1.5,  by=0.50))+
-    scale_y_continuous(limits =c(rangeMin,rangeMax), breaks=seq(rangeMin,rangeMax,  by=BY_increase)) +    theme_few() %+replace% 
-    theme(panel.background = element_rect(fill = NA,colour = "black", 
-                                          size =1))+
-    ylab("Area (km2)") + 
-    xlab("PAR Anomaly") + 
-    theme(axis.text.x = element_text( color="Black", size=24))+  #,face="bold")
-    theme(axis.text.y = element_text( color="Black", size=24))+  #,face="bold"
-    theme(axis.title=element_text(size=24))+ #,face="bold"
-    theme(plot.title=element_text(size=24))
-  return(p_Distribution)
-}
 ##---------------------------------------------------------------------------------------------------------------                                                                 
 

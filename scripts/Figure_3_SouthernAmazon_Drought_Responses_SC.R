@@ -35,8 +35,222 @@ file_path="data/"
 file_name=paste('SouthernAmazon_EVI_Climate_04De','.csv',sep='')
 file_ful_path=paste(file_path,"/",file_name,sep='')
 Drought_04De.data<- read.csv(file=file_ful_path,header=T) 
+############################################################################################################
+# Functions to run:
+#establish a selected GAM model
+ancova_establish_slope_Guiana<- function(Input_model.data){
+  names(Input_model.data)
+  
+  Input_model.data$SegGeo_numberf<-factor(Input_model.data$SegGeo_number)
+  mod.IA<-mgcv::gam(EVI_anomaly ~ s(HAND, PAR_anomaly, k = 15, bs = "tp") + ti(HAND, Pre_anomaly, bs = "tp") + 
+                      ti(HAND, PAR_anomaly, bs = "tp") + ti(HAND, VPD_anomaly, bs = "tp") + ti(HAND, Drought_Length, bs = "tp") +
+                      s(VPD_anomaly, Drought_Length, bs = "tp") + s(MCWD_anomaly, Pre_anomaly, bs = "tp") +
+                      ti(PAR_anomaly, Drought_Length, bs = "tp") + ti(PAR_anomaly, Pre_anomaly,  bs = "tp") + 
+                      ti(VPD_anomaly, PAR_anomaly, bs = "tp") + ti(VPD_anomaly, Pre_anomaly,  bs = "tp")+ 
+                      ti(HAND, MCWD_anomaly, bs = "tp")+ti(PAR_anomaly, MCWD_anomaly, bs = "tp") + 
+                      ti(MCWD_anomaly, VPD_anomaly, bs = "tp"), method = "ML", data = Input_model.data) 
+  
+  return(mod.IA) 
+}
 
+#function to get mean/median values
+set_value_byyear<- function(Data, x0.var='year',x1.var='PAR_anomaly',x2.var='VPD_anomaly',x3.var='MCWD_anomaly',
+                            x4.var='Pre_anomaly',x5.var='Drought_Length',drought_year='2005',moment=median){
+  ix0 <- match(x0.var, names(Data))
+  ix1 <- match(x1.var, names(Data))
+  ix2 <- match(x2.var, names(Data))
+  ix3 <- match(x3.var, names(Data))
+  ix4 <- match(x4.var, names(Data))
+  ix5 <- match(x5.var, names(Data))
+  print(ix0)
+  Data[Data[,ix0]== drought_year,ix1]<-moment(Data[Data[,ix0]== drought_year,ix1]) # Severe Drought, Medium Drought,Modest Drought
+  Data[Data[,ix0]== drought_year,ix2]<-moment(Data[Data[,ix0]== drought_year,ix2])
+  Data[Data[,ix0]== drought_year,ix3]<-moment(Data[Data[,ix0]== drought_year,ix3])
+  Data[Data[,ix0]== drought_year,ix4]<-moment(Data[Data[,ix0]== drought_year,ix4])
+  Data[Data[,ix0]== drought_year,ix5]<-moment(Data[Data[,ix0]== drought_year,ix5])
+  return(Data)
+}
 
+#function to correct EVI anomaly
+Drought_EVI_correction<-function(Data1, Data2,x0.var='year',x1.var='EVI_anomaly',x2.var='HAND_CLASS',data1.var='EVI_anomaly_fit',
+                                 data2.var='EVI_anomaly_fit_mean',drought_year='2015' ){
+  D1_ix0 <- match(x0.var, names(Data1))
+  D2_ix0 <- match(x0.var, names(Data2))
+  Data11<-Data1[Data1[,D1_ix0] == drought_year, ]
+  Data22<-Data2[Data2[,D2_ix0] == drought_year, ]
+  
+  D11_ix0 <- match(x0.var, names(Data11))
+  D11_ix1 <- match(x1.var, names(Data11))
+  D11_ix2 <- match(x2.var, names(Data11))
+  
+  D11_ix3 <- match(data1.var, names(Data11))
+  D22_ix3 <- match(data2.var, names(Data22))
+  
+  correction<-Data11[,D11_ix3]-Data22[,D22_ix3]
+  EVI_anomaly_corrected<-Data11[,D11_ix1] - correction#
+  
+  new_fit_array<-as.data.frame(cbind(Data11[,D11_ix1],correction,EVI_anomaly_corrected,Data11[,D11_ix2],Data11[,D11_ix0]))
+  names(new_fit_array) <- c(x1.var,'correction','EVI_anomaly_corrected',x2.var,x0.var) 
+  return(new_fit_array)
+  
+}
+
+#calculate summary 
+summary_group_full<-function(data,x0.var='EVI_anomaly',x1.var='EVI_anomaly_corrected', flag=1) # if using EVI_anomaly_corrected, flag=1 
+{
+  Summary_Geo=summary_group_simple(data,flag)
+  Summary_Geo<-Summary_Geo[which(Summary_Geo$N >=4  & Summary_Geo$HAND_CLASS <=40  & Summary_Geo$HAND_CLASS >=2),]
+  Summary_Geo<-data.frame(Summary_Geo$HAND_CLASS,Summary_Geo$EVI_anomaly_corrected,Summary_Geo$ci,Summary_Geo$se)
+  names(Summary_Geo) <- c('HAND_CLASS',x0.var,'ci','se') 
+  return(Summary_Geo)
+}
+#get summary information
+summary_group_simple<-function(Input_model.data, group_flag){
+  if (group_flag ==1) {
+    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly_corrected", groupvars=c("HAND_CLASS"))   #"Residual_R"
+  } else{ if (group_flag ==0) {
+    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly", groupvars=c("HAND_CLASS")) 
+  }else {
+    Residual_summary <- summarySE(Input_model.data, measurevar="Prediction", groupvars=c("HAND_CLASS")) 
+  }
+  }
+  return(Residual_summary)
+}
+
+#functions for Panel A prediction
+Drought_EVI_ModelPrediction<-function(Data1, Data1_BeforeScale, model, WTD_array,x0.var='year',x1.var='PAR_anomaly',
+                                      x2.var='VPD_anomaly',x3.var='MCWD_anomaly',x4.var='Pre_anomaly',
+                                      x5.var='Drought_Length',x6.var='HAND',drought_year='2005',moment=median,number_group){
+  
+  ix0 <- match(x0.var, names(Data1))
+  
+  data11<-Data1[Data1[,ix0] == drought_year, ]
+  
+  ix1 <- match(x1.var, names(data11))
+  ix2 <- match(x2.var, names(data11))
+  ix3 <- match(x3.var, names(data11))
+  ix4 <- match(x4.var, names(data11))
+  ix5 <- match(x5.var, names(data11))
+  Dix6 <- match(x6.var, names(Data1_BeforeScale))
+  
+  x1.level <-moment(data11[,ix1]) # PAR_anomaly
+  x2.level <-moment(data11[,ix2])
+  x3.level <-moment(data11[,ix3])
+  x4.level <-moment(data11[,ix4])
+  x5.level <-moment(data11[,ix5])
+  print(x2.level)
+  x1.SD <-sd(data11[,ix1])
+  
+  new <- data.frame(WTD_array,rep(x1.level,number_group),+
+                      rep(x2.level,number_group),+
+                      rep(x3.level,number_group),+
+                      rep(x4.level,number_group),+
+                      rep(x5.level,number_group)) #,as.data.frame(WTD_array), Pre_anomaly=rep(pre_set,times=number_group) PAR_set_2005 -0.4204329
+  names(new) <- c(x6.var,x1.var,x2.var,x3.var,x4.var,x5.var) 
+  
+  prediction_wtd00=predict(model,new,se.fit = TRUE)
+  new$lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
+  new$fit <- prediction_wtd00$fit
+  new$uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
+  nix6 <- match(x6.var, names(new))
+  new$WTD_reverse=(new[,nix6]*sd(Data1_BeforeScale[, Dix6]))+mean(Data1_BeforeScale[, Dix6])
+  names(new) <- c(x6.var,x1.var,x2.var,x3.var,x4.var,x5.var,'lci','fit','uci','WTD_reverse') 
+  return(new)
+}
+
+#functions for merging two figures
+merge_figures_sameunits<-function(base_plt,over_plt){
+  
+  plot_theme <- function(p) {
+    plyr::defaults(p$theme, theme_get())
+  }
+  
+  base_g = ggplot_gtable(ggplot_build(base_plt))
+  overlay_g = ggplot_gtable(ggplot_build(over_plt))
+  
+  plt_panel = c(subset(base_g$layout, name == "panel", se = t:r))
+  pnl_ind = which(overlay_g$layout$name == "panel")
+  leg_ind = which(overlay_g$layout$name == "guide-box") 
+  final_grob = gtable_add_grob(base_g,
+                               overlay_g$grobs[[pnl_ind]],
+                               plt_panel$t,
+                               plt_panel$l,
+                               plt_panel$b,
+                               plt_panel$r, name = "a")
+  
+  #final_grob = gtable_add_grob(final_grob,
+  #overlay_g$grobs[[leg_ind]])
+  #plt_panel$t,
+  #plt_panel$l,
+  #plt_panel$b,
+  #plt_panel$r, name = "b") #
+  return(final_grob)
+  
+}
+
+#function for Panel B and C
+Drought_EVI_ModelPred_ClimateSensitivity<-function(Data1, Data1_BeforeScale, model, WTD_value,x1.var='PAR_anomaly',
+                                                   x2.var='VPD_anomaly',x3.var='MCWD_anomaly',x4.var='Pre_anomaly',
+                                                   x5.var='Drought_Length',x6.var='HAND',key_variable='PAR_anomaly',key_var_array, moment=mean,number_group){
+  
+  
+  ix1 <- match(x1.var, names(Data1))
+  ix2 <- match(x2.var, names(Data1))
+  ix3 <- match(x3.var, names(Data1))
+  ix4 <- match(x4.var, names(Data1))
+  ix5 <- match(x5.var, names(Data1))
+  
+  Dikey <- match(key_variable, names(Data1_BeforeScale))
+  Dix6 <- match(x6.var, names(Data1_BeforeScale))
+  
+  x1.level <-moment(Data1[,ix1]) # PAR_anomaly
+  x2.level <-moment(Data1[,ix2])
+  x3.level <-moment(Data1[,ix3])
+  x4.level <-moment(Data1[,ix4])
+  x5.level <-moment(Data1[,ix5])
+  print(x2.level)
+  
+  Dix6.SD <-sd(Data1_BeforeScale[,Dix6])
+  WTD_value<-(WTD_value-mean(Data1_BeforeScale[,Dix6]))/Dix6.SD
+  print(WTD_value)
+  new <- data.frame(rep(WTD_value,number_group),rep(x1.level,number_group),+
+                      rep(x2.level,number_group),+
+                      rep(x3.level,number_group),+
+                      rep(x4.level,number_group),+
+                      rep(x5.level,number_group)) #,as.data.frame(WTD_array), Pre_anomaly=rep(pre_set,times=number_group) PAR_set_2005 -0.4204329
+  
+  names(new) <- c(x6.var,x1.var,x2.var,x3.var,x4.var,x5.var) 
+  key_ix <- match(key_variable, names(new))
+  new[,key_ix]<-(key_var_array-mean(Data1_BeforeScale[, Dikey]))/sd(Data1_BeforeScale[, Dikey]) # scale the key variable
+  print( new[,key_ix])
+  prediction_wtd00=predict(model,new,se.fit = TRUE)
+  new$lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
+  new$fit <- prediction_wtd00$fit
+  new$uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
+  new$key_variable_reverse=(new[,key_ix]*sd(Data1_BeforeScale[, Dikey]))+mean(Data1_BeforeScale[, Dikey])
+  
+  names(new) <- c(x6.var,x1.var,x2.var,x3.var,x4.var,x5.var,'lci','fit','uci',paste(key_variable,'_reverse',sep='')) 
+  return(new)
+}
+#function for panel D (calculate the delta mortality)
+Calculate_DeltaMortality<-function(Data,x0.var='AGBMor_tot_2005',x1.var='AGBMor_tot_mean',x2.var='HAND_CLASS'){
+  ix0 <- match(x0.var, names(Data))
+  ix1 <- match(x1.var, names(Data))
+  ix2 <- match(x2.var, names(Data))
+  
+  Data$Delta_Mortality<-(Data[,ix0]-Data[,ix1])/Data[,ix1] #
+  new_data<-as.data.frame(cbind(Data[,ix0],Data[,ix1],Data[,ix2],Data$Delta_Mortality))
+  names(new_data) <- c(x0.var,x1.var,x2.var,'Delta_Mortality')
+  
+  new_data<-new_data[which(new_data[,4] != 0 | is.finite(new_data[,4]) )  ,]
+  Summary_Geo<-summarySE(new_data, measurevar="Delta_Mortality", groupvars=c("HAND_CLASS")) 
+  Summary_Geo<-Summary_Geo[which(Summary_Geo$N >1 ),]
+  Summary_Geo<-data.frame(Summary_Geo$HAND_CLASS,Summary_Geo$Delta_Mortality,Summary_Geo$ci,Summary_Geo$se)
+  names(Summary_Geo) <- c('HAND_CLASS','Delta_Mortality','ci','se')
+  return(Summary_Geo)
+}
+############################################################################################################
+############################################################################################################
 ####-------------------------------------------main code for Figure 3-------------------------------------------
 ##------------------------------------Panel A Corrected EVI Anomaly in three droughts---------------------------
 ## establish a unified model for three drought; see model selection below
@@ -536,221 +750,7 @@ Figure3_PanelE2
 
 
 ##-------------------------------------------Functions for Figure 3---------------------------------------------
-#establish a selected GAM model
-ancova_establish_slope_Guiana<- function(Input_model.data){
-  names(Input_model.data)
-  
-  Input_model.data$SegGeo_numberf<-factor(Input_model.data$SegGeo_number)
-  
-  mod.IA<-mgcv::gam(EVI_anomaly ~ s(HAND, PAR_anomaly, k = 15, bs = "tp") + ti(HAND, Pre_anomaly, bs = "tp") + 
-                      ti(HAND, PAR_anomaly, bs = "tp") + ti(HAND, VPD_anomaly, bs = "tp") + ti(HAND, Drought_Length, bs = "tp") +
-                      s(VPD_anomaly, Drought_Length, bs = "tp") + s(MCWD_anomaly, Pre_anomaly, bs = "tp") +
-                      ti(PAR_anomaly, Drought_Length, bs = "tp") + ti(PAR_anomaly, Pre_anomaly,  bs = "tp") + 
-                      ti(VPD_anomaly, PAR_anomaly, bs = "tp") + ti(VPD_anomaly, Pre_anomaly,  bs = "tp")+ 
-                      ti(HAND, MCWD_anomaly, bs = "tp")+ti(PAR_anomaly, MCWD_anomaly, bs = "tp") + 
-                      ti(MCWD_anomaly, VPD_anomaly, bs = "tp"), method = "ML", data = Input_model.data) 
 
-  
-  return(mod.IA) 
-}
-
-#function to get mean/median values
-set_value_byyear<- function(Data, x0.var='year',x1.var='PAR_anomaly',x2.var='VPD_anomaly',x3.var='MCWD_anomaly',
-                          x4.var='Pre_anomaly',x5.var='Drought_Length',drought_year='2005',moment=median){
-  ix0 <- match(x0.var, names(Data))
-  ix1 <- match(x1.var, names(Data))
-  ix2 <- match(x2.var, names(Data))
-  ix3 <- match(x3.var, names(Data))
-  ix4 <- match(x4.var, names(Data))
-  ix5 <- match(x5.var, names(Data))
-  
-  print(ix0)
-  Data[Data[,ix0]== drought_year,ix1]<-moment(Data[Data[,ix0]== drought_year,ix1]) # Severe Drought, Medium Drought,Modest Drought
-  Data[Data[,ix0]== drought_year,ix2]<-moment(Data[Data[,ix0]== drought_year,ix2])
-  Data[Data[,ix0]== drought_year,ix3]<-moment(Data[Data[,ix0]== drought_year,ix3])
-  Data[Data[,ix0]== drought_year,ix4]<-moment(Data[Data[,ix0]== drought_year,ix4])
-  Data[Data[,ix0]== drought_year,ix5]<-moment(Data[Data[,ix0]== drought_year,ix5])
-  return(Data)
-}
-
-#function to correct EVI anomaly
-Drought_EVI_correction<-function(Data1, Data2,x0.var='year',x1.var='EVI_anomaly',x2.var='HAND_CLASS',data1.var='EVI_anomaly_fit',
-                                 data2.var='EVI_anomaly_fit_mean',drought_year='2015' ){
-  D1_ix0 <- match(x0.var, names(Data1))
-  D2_ix0 <- match(x0.var, names(Data2))
-  Data11<-Data1[Data1[,D1_ix0] == drought_year, ]
-  Data22<-Data2[Data2[,D2_ix0] == drought_year, ]
-  
-  D11_ix0 <- match(x0.var, names(Data11))
-  D11_ix1 <- match(x1.var, names(Data11))
-  D11_ix2 <- match(x2.var, names(Data11))
-
-  D11_ix3 <- match(data1.var, names(Data11))
-  D22_ix3 <- match(data2.var, names(Data22))
-  
-  correction<-Data11[,D11_ix3]-Data22[,D22_ix3]
-  EVI_anomaly_corrected<-Data11[,D11_ix1] - correction#
-  
-  new_fit_array<-as.data.frame(cbind(Data11[,D11_ix1],correction,EVI_anomaly_corrected,Data11[,D11_ix2],Data11[,D11_ix0]))
-  names(new_fit_array) <- c(x1.var,'correction','EVI_anomaly_corrected',x2.var,x0.var) 
-  return(new_fit_array)
-  
-}
-
-#calculate summary 
-summary_group_full<-function(data,x0.var='EVI_anomaly',x1.var='EVI_anomaly_corrected', flag=1) # if using EVI_anomaly_corrected, flag=1 
-{
-  Summary_Geo=summary_group_simple(data,flag)
-  Summary_Geo<-Summary_Geo[which(Summary_Geo$N >=4  & Summary_Geo$HAND_CLASS <=40  & Summary_Geo$HAND_CLASS >=2),]
-  Summary_Geo<-data.frame(Summary_Geo$HAND_CLASS,Summary_Geo$EVI_anomaly_corrected,Summary_Geo$ci,Summary_Geo$se)
-  names(Summary_Geo) <- c('HAND_CLASS',x0.var,'ci','se') 
-  return(Summary_Geo)
-}
-#get summary information
-summary_group_simple<-function(Input_model.data, group_flag){
-  if (group_flag ==1) {
-    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly_corrected", groupvars=c("HAND_CLASS"))   #"Residual_R"
-  } else{ if (group_flag ==0) {
-    Residual_summary <- summarySE(Input_model.data, measurevar="EVI_anomaly", groupvars=c("HAND_CLASS")) 
-  }else {
-    Residual_summary <- summarySE(Input_model.data, measurevar="Prediction", groupvars=c("HAND_CLASS")) 
-  }
-  }
-  return(Residual_summary)
-}
-
-#functions for Panel A prediction
-Drought_EVI_ModelPrediction<-function(Data1, Data1_BeforeScale, model, WTD_array,x0.var='year',x1.var='PAR_anomaly',
-                                      x2.var='VPD_anomaly',x3.var='MCWD_anomaly',x4.var='Pre_anomaly',
-                                      x5.var='Drought_Length',x6.var='HAND',drought_year='2005',moment=median,number_group){
-  
-  ix0 <- match(x0.var, names(Data1))
-  
-  data11<-Data1[Data1[,ix0] == drought_year, ]
-  
-  ix1 <- match(x1.var, names(data11))
-  ix2 <- match(x2.var, names(data11))
-  ix3 <- match(x3.var, names(data11))
-  ix4 <- match(x4.var, names(data11))
-  ix5 <- match(x5.var, names(data11))
-  Dix6 <- match(x6.var, names(Data1_BeforeScale))
-  
-  x1.level <-moment(data11[,ix1]) # PAR_anomaly
-  x2.level <-moment(data11[,ix2])
-  x3.level <-moment(data11[,ix3])
-  x4.level <-moment(data11[,ix4])
-  x5.level <-moment(data11[,ix5])
-  print(x2.level)
-  x1.SD <-sd(data11[,ix1])
-  
-  new <- data.frame(WTD_array,rep(x1.level,number_group),+
-                      rep(x2.level,number_group),+
-                      rep(x3.level,number_group),+
-                      rep(x4.level,number_group),+
-                      rep(x5.level,number_group)) #,as.data.frame(WTD_array), Pre_anomaly=rep(pre_set,times=number_group) PAR_set_2005 -0.4204329
-  names(new) <- c(x6.var,x1.var,x2.var,x3.var,x4.var,x5.var) 
-  
-  prediction_wtd00=predict(model,new,se.fit = TRUE)
-  new$lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
-  new$fit <- prediction_wtd00$fit
-  new$uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
-  nix6 <- match(x6.var, names(new))
-  new$WTD_reverse=(new[,nix6]*sd(Data1_BeforeScale[, Dix6]))+mean(Data1_BeforeScale[, Dix6])
-  names(new) <- c(x6.var,x1.var,x2.var,x3.var,x4.var,x5.var,'lci','fit','uci','WTD_reverse') 
-  return(new)
-}
-
-#functions for merging two figures
-merge_figures_sameunits<-function(base_plt,over_plt){
-    
-    plot_theme <- function(p) {
-      plyr::defaults(p$theme, theme_get())
-    }
-    
-    base_g = ggplot_gtable(ggplot_build(base_plt))
-    overlay_g = ggplot_gtable(ggplot_build(over_plt))
-    
-    plt_panel = c(subset(base_g$layout, name == "panel", se = t:r))
-    pnl_ind = which(overlay_g$layout$name == "panel")
-    leg_ind = which(overlay_g$layout$name == "guide-box") 
-    final_grob = gtable_add_grob(base_g,
-                                 overlay_g$grobs[[pnl_ind]],
-                                 plt_panel$t,
-                                 plt_panel$l,
-                                 plt_panel$b,
-                                 plt_panel$r, name = "a")
-    
-    #final_grob = gtable_add_grob(final_grob,
-                                 #overlay_g$grobs[[leg_ind]])
-                                 #plt_panel$t,
-                                 #plt_panel$l,
-                                 #plt_panel$b,
-                                 #plt_panel$r, name = "b") #
-    return(final_grob)
-  
-}
-
-#function for Panel B and C
-Drought_EVI_ModelPred_ClimateSensitivity<-function(Data1, Data1_BeforeScale, model, WTD_value,x1.var='PAR_anomaly',
-                                                   x2.var='VPD_anomaly',x3.var='MCWD_anomaly',x4.var='Pre_anomaly',
-                                                   x5.var='Drought_Length',x6.var='HAND',key_variable='PAR_anomaly',key_var_array, moment=mean,number_group){
-  
-  
-  ix1 <- match(x1.var, names(Data1))
-  ix2 <- match(x2.var, names(Data1))
-  ix3 <- match(x3.var, names(Data1))
-  ix4 <- match(x4.var, names(Data1))
-  ix5 <- match(x5.var, names(Data1))
-  
-  Dikey <- match(key_variable, names(Data1_BeforeScale))
-  Dix6 <- match(x6.var, names(Data1_BeforeScale))
-  
-  x1.level <-moment(Data1[,ix1]) # PAR_anomaly
-  x2.level <-moment(Data1[,ix2])
-  x3.level <-moment(Data1[,ix3])
-  x4.level <-moment(Data1[,ix4])
-  x5.level <-moment(Data1[,ix5])
-  print(x2.level)
-  
-  Dix6.SD <-sd(Data1_BeforeScale[,Dix6])
-  WTD_value<-(WTD_value-mean(Data1_BeforeScale[,Dix6]))/Dix6.SD
-  print(WTD_value)
-  new <- data.frame(rep(WTD_value,number_group),rep(x1.level,number_group),+
-                      rep(x2.level,number_group),+
-                      rep(x3.level,number_group),+
-                      rep(x4.level,number_group),+
-                      rep(x5.level,number_group)) #,as.data.frame(WTD_array), Pre_anomaly=rep(pre_set,times=number_group) PAR_set_2005 -0.4204329
-  
-  names(new) <- c(x6.var,x1.var,x2.var,x3.var,x4.var,x5.var) 
-  key_ix <- match(key_variable, names(new))
-  new[,key_ix]<-(key_var_array-mean(Data1_BeforeScale[, Dikey]))/sd(Data1_BeforeScale[, Dikey]) # scale the key variable
-  print( new[,key_ix])
-  prediction_wtd00=predict(model,new,se.fit = TRUE)
-  new$lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
-  new$fit <- prediction_wtd00$fit
-  new$uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
-  new$key_variable_reverse=(new[,key_ix]*sd(Data1_BeforeScale[, Dikey]))+mean(Data1_BeforeScale[, Dikey])
-  
-  names(new) <- c(x6.var,x1.var,x2.var,x3.var,x4.var,x5.var,'lci','fit','uci',paste(key_variable,'_reverse',sep='')) 
-  return(new)
-}
-#function for panel D (calculate the delta mortality)
-Calculate_DeltaMortality<-function(Data,x0.var='AGBMor_tot_2005',x1.var='AGBMor_tot_mean',x2.var='HAND_CLASS'){
-  ix0 <- match(x0.var, names(Data))
-  ix1 <- match(x1.var, names(Data))
-  ix2 <- match(x2.var, names(Data))
-  
-  Data$Delta_Mortality<-(Data[,ix0]-Data[,ix1])/Data[,ix1] #
-  new_data<-as.data.frame(cbind(Data[,ix0],Data[,ix1],Data[,ix2],Data$Delta_Mortality))
-  names(new_data) <- c(x0.var,x1.var,x2.var,'Delta_Mortality')
-  
-  new_data<-new_data[which(new_data[,4] != 0 | is.finite(new_data[,4]) )  ,]
-  Summary_Geo<-summarySE(new_data, measurevar="Delta_Mortality", groupvars=c("HAND_CLASS")) 
-  Summary_Geo<-Summary_Geo[which(Summary_Geo$N >1 ),]
-  Summary_Geo<-data.frame(Summary_Geo$HAND_CLASS,Summary_Geo$Delta_Mortality,Summary_Geo$ci,Summary_Geo$se)
-  names(Summary_Geo) <- c('HAND_CLASS','Delta_Mortality','ci','se')
-  return(Summary_Geo)
-}
 ##--------------------------------------------------------------------------------------------------------------
 
 

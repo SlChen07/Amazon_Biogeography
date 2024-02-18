@@ -34,6 +34,118 @@ file_path="data/"
 file_name=paste('ThreeDroughts_EVI_Ecotope_Climate_04De','.csv',sep='')
 file_ful_path=paste(file_path,"/",file_name,sep='')
 Drought_04De.data<- read.csv(file=file_ful_path,header=T) 
+############################################################################################################
+# Functions to run:
+merge_figures_sameunits<-function(base_plt,over_plt){
+  
+  plot_theme <- function(p) {
+    plyr::defaults(p$theme, theme_get())
+  }
+  
+  base_g = ggplot_gtable(ggplot_build(base_plt))
+  overlay_g = ggplot_gtable(ggplot_build(over_plt))
+  
+  plt_panel = c(subset(base_g$layout, name == "panel", se = t:r))
+  pnl_ind = which(overlay_g$layout$name == "panel")
+  leg_ind = which(overlay_g$layout$name == "guide-box") 
+  final_grob = gtable_add_grob(base_g,
+                               overlay_g$grobs[[pnl_ind]],
+                               plt_panel$t,
+                               plt_panel$l,
+                               plt_panel$b,
+                               plt_panel$r, name = "a")
+  
+  #final_grob = gtable_add_grob(final_grob,
+  #overlay_g$grobs[[leg_ind]],
+  # plt_panel$t,
+  # plt_panel$l,
+  # plt_panel$b,
+  # plt_panel$r, name = "b") #
+  return(final_grob)
+  
+}
+
+#calculate resilience
+Model_Seg_Resilience<- function( data, data.training, model, x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly',  moment = mean) {
+  
+  ix0 <- match(x0.var, names(data))
+  ix1<- match(x1.var, names(data))
+  ix2<- match(x2.var, names(data))
+  ix3<- match(x3.var, names(data))
+  ix4<- match(x4.var, names(data))
+  
+  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
+  ix1.other<- match(x1.other, names(data))
+  ix2.other<- match(x2.other, names(data))
+  ix3.other<- match(x3.other, names(data))
+  
+  
+  ix0.trn <- match(x0.var, names(data.training))
+  ix1.trn<- match(x1.var, names(data.training))
+  ix2.trn<- match(x2.var, names(data.training))
+  ix3.trn<- match(x3.var, names(data.training))
+  ix4.trn<- match(x4.var, names(data.training))
+  
+  iy <- match(y.var, names(data))
+  
+  data[,ix0]<-(data[,ix0]-mean(data.training[,ix0.trn]))/sd(data.training[,ix0.trn]) #using the same scale method in training datasets
+  print(sd(data.training[,ix0.trn])) 
+  data[,ix1]<-(data[,ix1]-mean(data.training[,ix1.trn]))/sd(data.training[,ix1.trn])
+  print(sd(data.training[,ix1.trn])) 
+  data[,ix2]<-(data[,ix2]-mean(data.training[,ix2.trn]))/sd(data.training[,ix2.trn])
+  print(sd(data.training[,ix2.trn])) 
+  data[,ix3]<-(data[,ix3]-mean(data.training[,ix3.trn]))/sd(data.training[,ix3.trn])
+  print(sd(data.training[,ix3.trn])) 
+  x1.level <- 0#moment(data[,ix1])
+  x2.level <- 0#moment(data[,ix2])
+  x3.level <- 0#moment(data[,ix3])
+  x4.level <- 0#moment(data[,ix4])
+  
+  
+  x0.other.level <- 0#moment(data[data[,ix4.other] == Seg,ix0.other]) 
+  x1.other.level <- 0#moment(data[data[,ix4.other] == Seg,ix1.other]) 
+  x2.other.level <- 0#moment(data[data[,ix4.other] == Seg,ix2.other]) 
+  x3.other.level <- 0#moment(data[data[,ix4.other] == Seg,ix3.other]) 
+  print(x0.other.level)
+  print(x1.other.level)
+  print(x2.other.level)
+  print(x3.other.level)
+  # set the hidden (other) variable 
+  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
+  row_lnth<-nrow(data)
+  x <- "Welcome to Programiz"
+  print(row_lnth)
+  
+  new <- data.frame( data[,ix0],data[,ix1],data[,ix2],+
+                       data[,ix3], rep(x4.level, row_lnth),+
+                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
+                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
+  
+  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
+  
+  new_fit_array<-add_fitted(new,model)
+  return(new_fit_array)
+}
+
+#establish a predictive selected GAM
+ancova_establish_slope_Guiana_04Degree_SoilSand<- function(Input_model.data){
+  names(Input_model.data)
+  
+  mod.IA<-mgcv::bam(EVI_anomaly ~   s(WTD,k=5) +s(TreeHeight)+ti(WTD,TreeHeight,k=c(3,4))
+                    +s(SoilSand_content,k=5)+ti(WTD,SoilSand_content, k = c(3, 4)) 
+                    +s(SoilFertility,k=5)+ti(WTD,SoilFertility,k=c(3,3))
+                    +ti(SoilFertility,SoilSand_content,k=c(3,4))
+                    +s(DrySeasonLength)+ti(WTD,DrySeasonLength,k=c(3,4)) 
+                    +ti(WTD, PAR_anomaly,bs='tp') +ti(WTD,VPD_anomaly,bs='tp')  
+                    +ti(WTD,MCWD_anomaly,bs='tp')+ti(WTD,Pre_anomaly,bs='tp')
+                    +s(PAR_anomaly)+s(MCWD_anomaly)+ti(PAR_anomaly,MCWD_anomaly,bs='tp')
+                    +ti(MCWD_anomaly,VPD_anomaly,bs='tp')+ti(VPD_anomaly,PAR_anomaly,bs='tp')
+                    +ti(PAR_anomaly,Pre_anomaly,bs='tp')+ti(MCWD_anomaly,Pre_anomaly,bs='tp'),method = "REML", data = Input_model.data)  # good for Fig4 this is final version
+  
+  return(mod.IA) 
+}
+############################################################################################################
+############################################################################################################
 
 ####-------------------------------------------main code for Figure 5-------------------------------------------
 ##-----------------------------------------Panel A Resilience calculation---------------------------------------
@@ -117,6 +229,49 @@ Ecotope.data_BS_ad_ha_mean$EVI_anomaly_fit_standardize<- (Ecotope.data_BS_ad_ha_
 currentTime <-Sys.Date()
 file_ful_path=paste(file_path,"/",currentTime,"Seg_All_2015_MAIAC_Biogeograpy.csv"  ,sep='') #
 write.csv(Ecotope.data_BS_ad_ha_mean,file =file_ful_path,row.names = F) 
+
+##-----------------------------------------Panel A Resilience continued 2---------------------------------------
+#read hydraulic safety margin data and corresponding ecotope factor values
+file_path="data/"#
+file_name=paste('EcotopeFactors_TavaresHSM','.csv',sep='')
+file_ful_path=paste(file_path,"/",file_name,sep='')
+file_ful_path
+Traveras.data<- read.csv(file=file_ful_path,header=T) 
+summary(Traveras.data)                                                           
+#calculate the adjusted prediction after adjusted for climates
+WTD_array<-Traveras.data$HAND #
+SoilFertility_array<-Traveras.data$Soilfertility #
+TreeHeight_array<-Traveras.data$TreeHeight#
+SoilSand_array<-Traveras.data$SoilSand/100.00
+DSL_array<-Traveras.data$DrySeasonLength#c(0,0,2,5,0,4,6,7,4)
+number_group=9
+DroughtLength_set=0
+SoilSand_content_set=0
+Drought_04De.data_bs<-Drought_04De_new.data_beforscaling
+newd<-data.frame(WTD=(WTD_array-mean(Drought_04De.data_bs$WTD))/sd(Drought_04De.data_bs$WTD),
+                 PAR_anomaly=rep(0,times=number_group),VPD_anomaly=rep(0,times=number_group),
+                 Pre_anomaly=rep(0,times=number_group),MCWD_anomaly=rep(0,times=number_group),
+                 SoilFertility=(SoilFertility_array-mean(Drought_04De.data_bs$SoilFertility))/sd(Drought_04De.data_bs$SoilFertility), 
+                 Drought_Length=rep(0,times=number_group),MCWD_STD=rep(0,times=number_group),
+                 DrySeasonLength=(DSL_array-mean(Drought_04De.data_bs$DrySeasonLength))/sd(Drought_04De.data_bs$DrySeasonLength),
+                 TreeHeight=(TreeHeight_array-mean(Drought_04De.data_bs$TreeHeight))/sd(Drought_04De.data_bs$TreeHeight),
+                 SoilSand_content =(SoilSand_array-mean(Drought_04De.data_bs$SoilSand_content))/sd(Drought_04De.data_bs$SoilSand_content)) 
+prediction_wtd00=predict(mod.IA_Guiana,newd,se.fit = TRUE)
+newd$lci <- prediction_wtd00$fit - 1.96 * prediction_wtd00$se.fit
+newd$fit <- prediction_wtd00$fit
+newd$uci <- prediction_wtd00$fit + 1.96 * prediction_wtd00$se.fit
+#calculate the resilience value
+mean_resilience<-mean(Ecotope.data_BS_ad_ha_mean$EVI_anomaly_fit_mean)#-0.4902197#
+st_resilience<-sd(Ecotope.data_BS_ad_ha_mean$EVI_anomaly_fit_mean)#0.3223132
+newd$fit<-(newd$fit-mean_resilience)/(st_resilience)
+Traveras.data$resilience<-newd$fit
+#draw the plot
+plot(  Traveras.data$HSM_P50 ~ newd$fit, pch=19 ,cex=1.5,xlab='Resilience', ylab='HSM50')#,col="blue"
+box(lwd=2) 
+lm_model<-lm((Traveras.data$HSM_P50)~(newd$fit))
+lm.HD_Line <-lm(lm_model)
+abline(lm.HD_Line,lwd=2)
+summary(lm_model)
 ##--------------------------------------------------------------------------------------------------------------
 
 
@@ -207,113 +362,6 @@ grid.draw(Figure5_PanelC)
 
 
 ##---------------------------------------Function for Figure 5--------------------------------------------------
-merge_figures_sameunits<-function(base_plt,over_plt){
 
-  plot_theme <- function(p) {
-    plyr::defaults(p$theme, theme_get())
-  }
-  
-  base_g = ggplot_gtable(ggplot_build(base_plt))
-  overlay_g = ggplot_gtable(ggplot_build(over_plt))
-  
-  plt_panel = c(subset(base_g$layout, name == "panel", se = t:r))
-  pnl_ind = which(overlay_g$layout$name == "panel")
-  leg_ind = which(overlay_g$layout$name == "guide-box") 
-  final_grob = gtable_add_grob(base_g,
-                               overlay_g$grobs[[pnl_ind]],
-                               plt_panel$t,
-                               plt_panel$l,
-                               plt_panel$b,
-                               plt_panel$r, name = "a")
-  
-  #final_grob = gtable_add_grob(final_grob,
-  #overlay_g$grobs[[leg_ind]],
- # plt_panel$t,
- # plt_panel$l,
- # plt_panel$b,
- # plt_panel$r, name = "b") #
-  return(final_grob)
-  
-}
-
-#calculate resilience
-Model_Seg_Resilience<- function( data, data.training, model, x0.var = 'WTD', x1.var = 'SoilFertility',  x2.var = 'SoilSand_content',  x3.var = 'TreeHeight',  x4.var = 'DrySeasonLength', y.var ='EVI_anomaly', x0.other='PAR_anomaly',x1.other='VPD_anomaly',x2.other='MCWD_anomaly',x3.other='Pre_anomaly',  moment = mean) {
-  
-  ix0 <- match(x0.var, names(data))
-  ix1<- match(x1.var, names(data))
-  ix2<- match(x2.var, names(data))
-  ix3<- match(x3.var, names(data))
-  ix4<- match(x4.var, names(data))
-  
-  ix0.other<- match(x0.other, names(data)) # get index to x-var name 
-  ix1.other<- match(x1.other, names(data))
-  ix2.other<- match(x2.other, names(data))
-  ix3.other<- match(x3.other, names(data))
-  
-  
-  ix0.trn <- match(x0.var, names(data.training))
-  ix1.trn<- match(x1.var, names(data.training))
-  ix2.trn<- match(x2.var, names(data.training))
-  ix3.trn<- match(x3.var, names(data.training))
-  ix4.trn<- match(x4.var, names(data.training))
-  
-  iy <- match(y.var, names(data))
-  
-  data[,ix0]<-(data[,ix0]-mean(data.training[,ix0.trn]))/sd(data.training[,ix0.trn]) #using the same scale method in training datasets
-  print(sd(data.training[,ix0.trn])) 
-  data[,ix1]<-(data[,ix1]-mean(data.training[,ix1.trn]))/sd(data.training[,ix1.trn])
-  print(sd(data.training[,ix1.trn])) 
-  data[,ix2]<-(data[,ix2]-mean(data.training[,ix2.trn]))/sd(data.training[,ix2.trn])
-  print(sd(data.training[,ix2.trn])) 
-  data[,ix3]<-(data[,ix3]-mean(data.training[,ix3.trn]))/sd(data.training[,ix3.trn])
-  print(sd(data.training[,ix3.trn])) 
-  x1.level <- 0#moment(data[,ix1])
-  x2.level <- 0#moment(data[,ix2])
-  x3.level <- 0#moment(data[,ix3])
-  x4.level <- 0#moment(data[,ix4])
-  
-  
-  x0.other.level <- 0#moment(data[data[,ix4.other] == Seg,ix0.other]) 
-  x1.other.level <- 0#moment(data[data[,ix4.other] == Seg,ix1.other]) 
-  x2.other.level <- 0#moment(data[data[,ix4.other] == Seg,ix2.other]) 
-  x3.other.level <- 0#moment(data[data[,ix4.other] == Seg,ix3.other]) 
-  print(x0.other.level)
-  print(x1.other.level)
-  print(x2.other.level)
-  print(x3.other.level)
-  # set the hidden (other) variable 
-  # set to a level based on some specified moment (e.g. mean, median, max, min etc)
-  row_lnth<-nrow(data)
-  x <- "Welcome to Programiz"
-  print(row_lnth)
-  
-  new <- data.frame( data[,ix0],data[,ix1],data[,ix2],+
-                       data[,ix3], rep(x4.level, row_lnth),+
-                       rep(x0.other.level, row_lnth),rep(x1.other.level,row_lnth),+
-                       rep(x2.other.level, row_lnth),rep(x3.other.level, row_lnth) )
-  
-  names(new) <- c(x0.var,x1.var,x2.var,x3.var,x4.var, x0.other,x1.other,x2.other,x3.other)   
-  
-  new_fit_array<-add_fitted(new,model)
-  return(new_fit_array)
-}
-
-#establish a predictive selected GAM
-ancova_establish_slope_Guiana_04Degree_SoilSand<- function(Input_model.data){
-  names(Input_model.data)
-  
-  mod.IA<-mgcv::bam(EVI_anomaly ~   s(WTD,k=5) +s(TreeHeight)+ti(WTD,TreeHeight,k=c(3,4))
-                    +s(SoilSand_content,k=5)+ti(WTD,SoilSand_content, k = c(3, 4)) 
-                    +s(SoilFertility,k=5)+ti(WTD,SoilFertility,k=c(3,3))
-                    +ti(SoilFertility,SoilSand_content,k=c(3,4))
-                    +s(DrySeasonLength)+ti(WTD,DrySeasonLength,k=c(3,4)) 
-                    +ti(WTD, PAR_anomaly,bs='tp') +ti(WTD,VPD_anomaly,bs='tp')  
-                    +ti(WTD,MCWD_anomaly,bs='tp')+ti(WTD,Pre_anomaly,bs='tp')
-                    +s(PAR_anomaly)+s(MCWD_anomaly)+ti(PAR_anomaly,MCWD_anomaly,bs='tp')
-                    +ti(MCWD_anomaly,VPD_anomaly,bs='tp')+ti(VPD_anomaly,PAR_anomaly,bs='tp')
-                    +ti(PAR_anomaly,Pre_anomaly,bs='tp')+ti(MCWD_anomaly,Pre_anomaly,bs='tp'),method = "REML", data = Input_model.data)  # good for Fig4 this is final version
-  
-  return(mod.IA) 
-}
 ##--------------------------------------------------------------------------------------------------------------
 
