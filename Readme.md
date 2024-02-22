@@ -33,15 +33,19 @@ Contents
 - Brienen_RAINFOR_Efforts.csv		
 - Brienen_RAINFOR_Efforts_HAND.csv		
 - Brienen_Basin_validation.csv		
-- Brienen_RAINFOR_Efforts.csv		
-- Brienen_RAINFOR_Efforts_HAND.csv		 		
+	 		
 			
 2. The scripts to recreate the main analyses and the main figures are provided:
 			
-	1.Figure_2_2005_Drought_Responses.R
+	1.Figure_2_2005_Drought_Responses_SC_N.R
    		
-	2.Figure_3_SouthernAmazon_Drought_Responses.R
+	2.Figure_3_SouthernAmazon_Drought_Responses_SC_N.R
    		
-	3.Figure_4_EcotopeDroughtResponses.R
+	3.Figure_4_EcotopeDroughtResponses_SC_N.R
    		
-	4.Figure_5_BiogeographyofAmazon.R
+	4.Figure_5_BiogeographyofAmazon_SC_N.R
+
+        5.GAM_AIC_ModelSelection_SC_N.R
+   		
+	6.DAG_related_code_SC_N.R
+   
