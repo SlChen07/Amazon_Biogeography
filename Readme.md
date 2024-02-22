@@ -45,6 +45,6 @@ Contents
    		
 	4.Figure_5_BiogeographyofAmazon_SC_N.R
         
-        5.GAM_AIC_ModelSelection_SC_N.R
-	
-        6.DAG_related_code_SC_N.R
+        5.DAG_related_code_SC_N.R
+   		
+	6.GAM_AIC_ModelSelection_SC_N.R
