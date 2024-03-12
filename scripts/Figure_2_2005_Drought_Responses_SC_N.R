@@ -14,11 +14,12 @@ rm(list=ls(all=TRUE))
 
 #Packages required:  
 if (!require("pacman")) install.packages("pacman"); library(pacman)
-pacman::p_load(tidyverse, mgcv, qgam, mgcViz, gam, collapse, plm, LaplacesDemon, 
+pacman::p_load(tidyverse, mgcv, qgam,  gam, collapse, plm, LaplacesDemon, 
                gratia, rlang, fields, MASS, smatr, ggpmisc, Rmisc, 
                lattice, ggsignif, scales, grid, ggthemes, RColorBrewer,
                plotly, MuMIn, Hotelling, mvdalab, gamlss, gamlss.dist,
-               gamlss.add, fitdistrplus, logspline, pracma, sp, r2d2, paletteer, viridis, patchwork)
+               gamlss.add, fitdistrplus, logspline, pracma, sp, r2d2, paletteer, viridis, patchwork) #mgcViz,
+
 
 ############################################################################################################
 # DATASETS REQUIRED:
@@ -27,7 +28,7 @@ pacman::p_load(tidyverse, mgcv, qgam, mgcViz, gam, collapse, plm, LaplacesDemon,
 ## functions are listed at the end of the page
 ## Read EVI anomaly and climate data
 # set your own working directory
-setwd("F:/csl/HAND/Code_Sum/R/Biogeography_of_Amazon_forests")
+setwd("")
 file_path="data/"
 Drought_year='2005'                                                                            
 file_name=paste('Droughtof2005_EVI_Climate_WTD_simple','.csv',sep='')#_simple
