@@ -5,8 +5,8 @@ This is a repository of codes and data to reproduce the main analyses and figure
 
 'Shuli Chen, Scott C Stark, Antonio Donato Nobre, Luz Adriana Cuartas, Diogo de Jesus Amore, Natalia Restrepo-Coupe, Marielle N. Smith, Rutuja Chitra-Tarak, Hongseok Ko, Bruce W Nelson, Scott R Saleska. DOI 
 
-This repository also contains scripts and data to repreoduce the main figures of the Nature paper (Tavares et al., 2023):			
- "Basin-wide variation in tree hydraulic safety margins predicts the carbon balance of Amazon forests"			
+This repository also contains scripts and data to repreoduce the main figures of the paper (Chen et al.):			
+ "A biogeography of Amazon forest drought response predicts basin-wide resilience and vulnerability."			
 			
 Data Use Policy
 ===========			
